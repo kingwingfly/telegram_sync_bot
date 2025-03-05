@@ -37,6 +37,6 @@ podman build --target bot_runner -t bot --network host .
 # Windows or MacOS only
 podman machine init -v /path/to/output:/path/to/output bot_machine
 
-# WIP podman run server -itd -e TELEGRAM_API_ID=<api_id> TELEGRAM_API_HASH=<api_hash>
-podman run bot -itd --env-file .env -v /path/to/output:/app/output
+# WIP podman run  -itd -e TELEGRAM_API_ID=<api_id> TELEGRAM_API_HASH=<api_hash> server
+podman run -itd --env-file .env -v /path/to/output:/app/output bot
 ```
