@@ -4,6 +4,14 @@ This is a telegram bot that can be used to download files forwarded to the bot b
 
 Build with Rust and Teloxide.
 
+The bot will download the file and save it to the specified directory.
+
+Then it will send the saved file to the owner.
+
+The owner can react to the message with emoji to manage the file:
+- "👍" | "❤": move the file to favorite directory
+- "👎": delete the file
+
 # Usage
 
 You need create a `.env` file with the following content:

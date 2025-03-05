@@ -1,17 +1,19 @@
 use anyhow::{Context, Result};
 use log::{debug, error, info};
-use reqwest::Client;
+use sled::Db;
 use std::sync::OnceLock;
 use teloxide::{
     dispatching::{
-        UpdateHandler,
+        UpdateFilterExt, UpdateHandler,
         dialogue::{self, InMemStorage},
     },
     macros::BotCommands,
+    net::Download,
     prelude::*,
-    types::{InputFile, MediaKind, MessageKind},
+    types::{InputFile, MediaKind, MessageKind, ReactionType, UpdateKind},
     utils::command::BotCommands as _,
 };
+use tokio::fs;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -48,9 +50,15 @@ fn output_dir() -> &'static str {
     })
 }
 
-fn client() -> &'static Client {
-    static CLIENT: OnceLock<Client> = OnceLock::new();
-    CLIENT.get_or_init(Client::new)
+fn fav_dir() -> &'static str {
+    static OUTPUT_DIR: OnceLock<String> = OnceLock::new();
+    OUTPUT_DIR.get_or_init(|| {
+        let output_dir = std::env::args().nth(1).unwrap_or(".".to_string());
+        let fav_dir = format!("{}/favorite", output_dir);
+        info!("Favorite dir: {}", fav_dir);
+        std::fs::create_dir_all(&fav_dir).expect("Failed to create favorite dir");
+        fav_dir
+    })
 }
 
 async fn run() -> Result<()> {
@@ -60,12 +68,12 @@ async fn run() -> Result<()> {
     Dispatcher::builder(bot, handler())
         .dependencies(dptree::deps![
             InMemStorage::<State>::new(),
+            sled::open(format!("{}/data/db.sled", output_dir())).context("Failed to open db")?,
             UserId(
                 std::env::var("OWNER_ID")
-                    .unwrap()
-                    .parse()
-                    .context("INVALID OWNER_ID")
-                    .unwrap(),
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .context("INVALID OWNER_ID")?
             )
         ])
         .enable_ctrlc_handler()
@@ -144,7 +152,7 @@ fn handler() -> UpdateHandler<anyhow::Error> {
     let message_handler = Update::filter_message()
         .branch(command_handler)
         .branch(
-            case![State::Working].endpoint(async |bot: Bot, msg: Message| {
+            case![State::Working].endpoint(async |bot: Bot, msg: Message, db: Db| {
                 if let MessageKind::Common(common_msg) = msg.kind {
                     match common_msg.media_kind {
                         MediaKind::Text(text) => {
@@ -152,24 +160,39 @@ fn handler() -> UpdateHandler<anyhow::Error> {
                         }
                         MediaKind::Video(video) => {
                             let path = bot.get_file(&video.video.file.id).send().await?.path;
-                            let url = format!(
-                                "https://api.telegram.org/file/bot{token}/{path}",
-                                token = bot.token()
-                            );
-                            save(&url).await?;
-                            bot.send_video(msg.chat.id, InputFile::file_id(video.video.file.id))
-                                .await?;
+                            let file_path = format!("{}/{}.mp4", output_dir(), video.video.file.id);
+                            let mut file = fs::File::create(&file_path).await?;
+                            info!("Saving: {}", file_path);
+                            bot.download_file(&path, &mut file).await?;
+                            let msg_id = bot
+                                .send_video(msg.chat.id, InputFile::file_id(video.video.file.id))
+                                .await?
+                                .id
+                                .0
+                                .to_ne_bytes();
+                            let msgs = db.open_tree("msgs").context("Failed to open msg tree")?;
+                            msgs.insert(msg_id, file_path.as_bytes())
+                                .context("Failed to save msg_id")?;
+                            info!("Saved: {}", file_path);
                         }
                         MediaKind::Photo(photo) => {
-                            if let Some(p) = photo.photo.into_iter().max_by_key(|p| p.height) {
-                                let path = bot.get_file(&p.file.id).send().await?.path;
-                                let url = format!(
-                                    "https://api.telegram.org/file/bot{token}/{path}",
-                                    token = bot.token()
-                                );
-                                save(&url).await?;
-                                bot.send_photo(msg.chat.id, InputFile::file_id(p.file.id))
-                                    .await?;
+                            if let Some(photo) = photo.photo.into_iter().max_by_key(|p| p.height) {
+                                let path = bot.get_file(&photo.file.id).send().await?.path;
+                                let file_path = format!("{}/{}.jpg", output_dir(), photo.file.id);
+                                let mut file = fs::File::create(&file_path).await?;
+                                info!("Saving: {}", file_path);
+                                bot.download_file(&path, &mut file).await?;
+                                let msg_id = bot
+                                    .send_photo(msg.chat.id, InputFile::file_id(photo.file.id))
+                                    .await?
+                                    .id
+                                    .0
+                                    .to_ne_bytes();
+                                let msgs =
+                                    db.open_tree("msgs").context("Failed to open msg tree")?;
+                                msgs.insert(msg_id, file_path.as_bytes())
+                                    .context("Failed to save msg_id")?;
+                                info!("Saved: {}", file_path);
                             }
                         }
                         _ => {}
@@ -180,25 +203,57 @@ fn handler() -> UpdateHandler<anyhow::Error> {
         )
         .branch(dptree::endpoint(async || Ok(())));
 
+    let react_handler = Update::filter_message_reaction_updated().branch(
+        case![State::Working].endpoint(async |bot: Bot, update: Update, db: Db| {
+            if let UpdateKind::MessageReaction(reaction) = update.kind {
+                let msg_id = reaction.message_id.0.to_ne_bytes();
+                let msgs = db.open_tree("msgs").context("Failed to open msg tree")?;
+                if let Ok(Some(file_path)) = msgs.get(msg_id) {
+                    let file_path = std::path::Path::new(std::str::from_utf8(&file_path)?);
+                    let file_name = file_path
+                        .file_name()
+                        .and_then(|file| file.to_str())
+                        .context("Failed to read filename from db")?;
+
+                    if let Some(ReactionType::Emoji { emoji }) = reaction.new_reaction.first() {
+                        match emoji.as_str() {
+                            "👍" | "❤" => {
+                                let target_path = format!("{}/{}", fav_dir(), file_name);
+                                fs::rename(file_path, &target_path).await?;
+                                msgs.insert(msg_id, target_path.as_bytes())
+                                    .context("Failed to update msg and file path")?;
+                                info!("Fav: {}", target_path);
+                            }
+                            "👎" => {
+                                fs::remove_file(&file_path).await?;
+                                msgs.remove(msg_id).context("Failed to remove msg_id")?;
+                                bot.delete_message(reaction.chat.id, reaction.message_id)
+                                    .await?;
+                                info!("Delete: {}", file_path.display());
+                            }
+                            _ => {}
+                        }
+                    } else if let Some(ReactionType::Emoji { emoji }) =
+                        reaction.old_reaction.first()
+                    {
+                        if matches!(emoji.as_str(), "👍" | "❤") {
+                            let target_path = format!("{}/{}", output_dir(), file_name);
+                            fs::rename(file_path, &target_path).await?;
+                            msgs.insert(msg_id, target_path.as_bytes())
+                                .context("Failed to update msg and file path")?;
+                            info!("Unfav: {}", target_path);
+                        }
+                    }
+                }
+            }
+            Ok(())
+        }),
+    );
+
     let callback_query_handler = Update::filter_callback_query();
 
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
+        .branch(react_handler)
         .branch(callback_query_handler)
-}
-
-async fn save(url: impl AsRef<str>) -> Result<()> {
-    let url = url.as_ref();
-    info!("Downloading: {}", url);
-    let res = client().get(url).send().await?;
-    let bytes = res.bytes().await?;
-    let ext = url
-        .split(".")
-        .last()
-        .map(|ext| format!(".{}", ext))
-        .unwrap_or_default();
-    let filename = sha256::digest(&bytes[..]);
-    tokio::fs::write(format!("{}/{}{}", output_dir(), filename, ext), bytes).await?;
-    info!("Saved: {}", filename);
-    Ok(())
 }
