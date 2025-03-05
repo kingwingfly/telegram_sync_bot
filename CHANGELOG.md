@@ -9,6 +9,10 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.1.5] - 2025-03-06
+
+- document download support
+
 ## [0.1.4] - 2025-03-06
 
 - async download

@@ -159,6 +159,38 @@ fn handler() -> UpdateHandler<anyhow::Error> {
                         MediaKind::Text(text) => {
                             debug!("Text: {:#?}", text);
                         }
+                        MediaKind::Document(document) => {
+                            tokio::spawn(async move {
+                                let path =
+                                    bot.get_file(&document.document.file.id).send().await?.path;
+                                let file_path = format!(
+                                    "{}/{}",
+                                    output_dir(),
+                                    document
+                                        .document
+                                        .file_name
+                                        .unwrap_or(document.document.file.id.clone())
+                                );
+                                let mut file = fs::File::create(&file_path).await?;
+                                info!("Saving: {}", file_path);
+                                bot.download_file(&path, &mut file).await?;
+                                let msg_id = bot
+                                    .send_video(
+                                        msg.chat.id,
+                                        InputFile::file_id(document.document.file.id),
+                                    )
+                                    .await?
+                                    .id
+                                    .0
+                                    .to_ne_bytes();
+                                let msgs =
+                                    db.open_tree("msgs").context("Failed to open msg tree")?;
+                                msgs.insert(msg_id, file_path.as_bytes())
+                                    .context("Failed to save msg_id")?;
+                                info!("Saved: {}", file_path);
+                                Result::<_, anyhow::Error>::Ok(())
+                            });
+                        }
                         MediaKind::Video(video) => {
                             tokio::spawn(async move {
                                 let path = bot.get_file(&video.video.file.id).send().await?.path;
