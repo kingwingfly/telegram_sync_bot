@@ -24,7 +24,7 @@ RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
     && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=.. .. \
     && cmake --build . --target install \
     && cd ../.. \
-    && ls -l telegram-bot-api/bin/telegram-bot-api* 
+    && ls -l telegram-bot-api/bin/telegram-bot-api*
 
 ########################################
 
@@ -34,7 +34,7 @@ WORKDIR /app
 
 COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
 
-CMD ["/app/fav_sync_bot"]
+CMD ["/app/fav_sync_bot", "/app/output"]
 
 ########################################
 

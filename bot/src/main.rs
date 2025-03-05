@@ -1,18 +1,19 @@
 use anyhow::{Context, Result};
 use log::{debug, error, info};
+use reqwest::Client;
+use std::sync::OnceLock;
 use teloxide::{
     dispatching::{
         dialogue::{self, InMemStorage},
         UpdateHandler,
     },
     macros::BotCommands,
-    payloads::GetFile,
     prelude::*,
     types::{MediaKind, MessageKind},
     utils::command::BotCommands as _,
 };
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(e) = run().await {
         error!("Error: {:?}", e);
@@ -37,6 +38,21 @@ fn init() -> Result<()> {
     Ok(())
 }
 
+fn output_dir() -> &'static str {
+    static OUTPUT_DIR: OnceLock<String> = OnceLock::new();
+    OUTPUT_DIR.get_or_init(|| {
+        let output_dir = std::env::args().nth(1).unwrap_or(".".to_string());
+        info!("Output dir: {}", output_dir);
+        std::fs::create_dir_all(&output_dir).expect("Failed to create output dir");
+        output_dir
+    })
+}
+
+fn client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(Client::new)
+}
+
 async fn run() -> Result<()> {
     init()?;
 
@@ -56,6 +72,7 @@ async fn run() -> Result<()> {
         .build()
         .dispatch()
         .await;
+
     Ok(())
 }
 
@@ -83,8 +100,6 @@ enum Command {
 }
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
-#[derive(Clone, Debug)]
-struct Token(String);
 
 fn handler() -> UpdateHandler<anyhow::Error> {
     use dptree::case;
@@ -136,20 +151,21 @@ fn handler() -> UpdateHandler<anyhow::Error> {
                             debug!("Text: {:#?}", text);
                         }
                         MediaKind::Video(video) => {
-                            debug!("{:#?}", video.video);
                             let p = bot.get_file(video.video.file.id).send().await?.path;
                             let url = format!(
                                 "https://api.telegram.org/file/bot{token}/{p}",
                                 token = bot.token()
                             );
+                            save(url).await?;
                         }
                         MediaKind::Photo(photo) => {
-                            for meta in photo.photo {
-                                let p = bot.get_file(meta.file.id).send().await?.path;
+                            if let Some(p) = photo.photo.into_iter().max_by_key(|p| p.height) {
+                                let p = bot.get_file(p.file.id).send().await?.path;
                                 let url = format!(
                                     "https://api.telegram.org/file/bot{token}/{p}",
                                     token = bot.token()
                                 );
+                                save(url).await?;
                             }
                         }
                         _ => {}
@@ -165,4 +181,14 @@ fn handler() -> UpdateHandler<anyhow::Error> {
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
         .branch(callback_query_handler)
+}
+
+async fn save(url: String) -> Result<()> {
+    info!("Downloading: {}", url);
+    let res = client().get(&url).send().await?;
+    let bytes = res.bytes().await?;
+    let filename = url.split('/').next_back().unwrap();
+    tokio::fs::write(format!("{}/{}", output_dir(), filename), bytes).await?;
+    info!("Saved: {}", filename);
+    Ok(())
 }
