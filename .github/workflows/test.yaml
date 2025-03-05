@@ -32,7 +32,7 @@ jobs:
 
       - name: install cargo components
         if: steps.cache-cargo-restore.outputs.cache-hit != 'true'
-        run: rustup component add clippy
+        run: rustup update && rustup component add clippy
 
       - name: Run build
         if: steps.cache-cargo-restore.outputs.cache-hit != 'true'
