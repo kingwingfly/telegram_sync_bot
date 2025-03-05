@@ -25,6 +25,7 @@ async fn main() {
 fn init() -> Result<()> {
     pretty_env_logger::env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
+        .filter_module("sled", log::LevelFilter::Info)
         .init();
     info!("Initializing..");
     dotenv::dotenv().ok();
@@ -159,31 +160,18 @@ fn handler() -> UpdateHandler<anyhow::Error> {
                             debug!("Text: {:#?}", text);
                         }
                         MediaKind::Video(video) => {
-                            let path = bot.get_file(&video.video.file.id).send().await?.path;
-                            let file_path = format!("{}/{}.mp4", output_dir(), video.video.file.id);
-                            let mut file = fs::File::create(&file_path).await?;
-                            info!("Saving: {}", file_path);
-                            bot.download_file(&path, &mut file).await?;
-                            let msg_id = bot
-                                .send_video(msg.chat.id, InputFile::file_id(video.video.file.id))
-                                .await?
-                                .id
-                                .0
-                                .to_ne_bytes();
-                            let msgs = db.open_tree("msgs").context("Failed to open msg tree")?;
-                            msgs.insert(msg_id, file_path.as_bytes())
-                                .context("Failed to save msg_id")?;
-                            info!("Saved: {}", file_path);
-                        }
-                        MediaKind::Photo(photo) => {
-                            if let Some(photo) = photo.photo.into_iter().max_by_key(|p| p.height) {
-                                let path = bot.get_file(&photo.file.id).send().await?.path;
-                                let file_path = format!("{}/{}.jpg", output_dir(), photo.file.id);
+                            tokio::spawn(async move {
+                                let path = bot.get_file(&video.video.file.id).send().await?.path;
+                                let file_path =
+                                    format!("{}/{}.mp4", output_dir(), video.video.file.id);
                                 let mut file = fs::File::create(&file_path).await?;
                                 info!("Saving: {}", file_path);
                                 bot.download_file(&path, &mut file).await?;
                                 let msg_id = bot
-                                    .send_photo(msg.chat.id, InputFile::file_id(photo.file.id))
+                                    .send_video(
+                                        msg.chat.id,
+                                        InputFile::file_id(video.video.file.id),
+                                    )
                                     .await?
                                     .id
                                     .0
@@ -193,7 +181,34 @@ fn handler() -> UpdateHandler<anyhow::Error> {
                                 msgs.insert(msg_id, file_path.as_bytes())
                                     .context("Failed to save msg_id")?;
                                 info!("Saved: {}", file_path);
-                            }
+                                Result::<_, anyhow::Error>::Ok(())
+                            });
+                        }
+                        MediaKind::Photo(photo) => {
+                            tokio::spawn(async move {
+                                if let Some(photo) =
+                                    photo.photo.into_iter().max_by_key(|p| p.height)
+                                {
+                                    let path = bot.get_file(&photo.file.id).send().await?.path;
+                                    let file_path =
+                                        format!("{}/{}.jpg", output_dir(), photo.file.id);
+                                    let mut file = fs::File::create(&file_path).await?;
+                                    info!("Saving: {}", file_path);
+                                    bot.download_file(&path, &mut file).await?;
+                                    let msg_id = bot
+                                        .send_photo(msg.chat.id, InputFile::file_id(photo.file.id))
+                                        .await?
+                                        .id
+                                        .0
+                                        .to_ne_bytes();
+                                    let msgs =
+                                        db.open_tree("msgs").context("Failed to open msg tree")?;
+                                    msgs.insert(msg_id, file_path.as_bytes())
+                                        .context("Failed to save msg_id")?;
+                                    info!("Saved: {}", file_path);
+                                }
+                                Result::<_, anyhow::Error>::Ok(())
+                            });
                         }
                         _ => {}
                     }
