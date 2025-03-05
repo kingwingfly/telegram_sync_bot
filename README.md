@@ -8,7 +8,7 @@ Build with Rust and Teloxide.
 
 You need create a `.env` file with the following content:
 
-```text
+```sh
 # Get from botfather
 TELOXIDE_TOKEN=xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Your telegram id found in your profile

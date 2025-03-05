@@ -1,10 +1,10 @@
 [workspace]
-members = ["bot"]
+members = ["fav_sync_bot"]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
 license = "MIT"
