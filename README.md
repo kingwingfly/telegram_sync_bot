@@ -40,3 +40,23 @@ podman machine init -v /path/to/output:/path/to/output bot_machine
 # WIP podman run  -itd -e TELEGRAM_API_ID=<api_id> -e TELEGRAM_API_HASH=<api_hash> server
 podman run -itd --env-file .env -v /path/to/output:/app/output --stop-signal SIGINT bot
 ```
+
+# Systemd Service
+```ini
+# fav-sync-bot.service
+[Unit]
+Description=Fav sync bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=<...>
+WorkingDirectory=</path/to/output>
+ExecStart=/usr/local/bin/fav_sync_bot
+Restart=on-failure
+Environment="TELOXIDE_TOKEN=<...>"
+Environment="OWNER_ID=<...>"
+
+[Install]
+WantedBy=multi-user.target
+```

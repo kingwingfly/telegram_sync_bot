@@ -4,8 +4,8 @@ use reqwest::Client;
 use std::sync::OnceLock;
 use teloxide::{
     dispatching::{
-        dialogue::{self, InMemStorage},
         UpdateHandler,
+        dialogue::{self, InMemStorage},
     },
     macros::BotCommands,
     prelude::*,
@@ -187,8 +187,13 @@ async fn save(url: String) -> Result<()> {
     info!("Downloading: {}", url);
     let res = client().get(&url).send().await?;
     let bytes = res.bytes().await?;
-    let filename = url.split('/').next_back().unwrap();
-    tokio::fs::write(format!("{}/{}", output_dir(), filename), bytes).await?;
+    let ext = url
+        .split(".")
+        .last()
+        .map(|ext| format!(".{}", ext))
+        .unwrap_or_default();
+    let filename = sha256::digest(&bytes[..]);
+    tokio::fs::write(format!("{}/{}{}", output_dir(), filename, ext), bytes).await?;
     info!("Saved: {}", filename);
     Ok(())
 }
