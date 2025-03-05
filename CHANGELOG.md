@@ -9,6 +9,10 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.1.2] - 2025-03-05
+
+- reply after downloading
+
 ## [0.1.1] - 2025-03-05
 
 - sha256 file name

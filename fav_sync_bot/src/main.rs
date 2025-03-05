@@ -9,7 +9,7 @@ use teloxide::{
     },
     macros::BotCommands,
     prelude::*,
-    types::{MediaKind, MessageKind},
+    types::{InputFile, MediaKind, MessageKind},
     utils::command::BotCommands as _,
 };
 
@@ -145,27 +145,31 @@ fn handler() -> UpdateHandler<anyhow::Error> {
         .branch(command_handler)
         .branch(
             case![State::Working].endpoint(async |bot: Bot, msg: Message| {
-                if let MessageKind::Common(msg) = msg.kind {
-                    match msg.media_kind {
+                if let MessageKind::Common(common_msg) = msg.kind {
+                    match common_msg.media_kind {
                         MediaKind::Text(text) => {
                             debug!("Text: {:#?}", text);
                         }
                         MediaKind::Video(video) => {
-                            let p = bot.get_file(video.video.file.id).send().await?.path;
+                            let path = bot.get_file(&video.video.file.id).send().await?.path;
                             let url = format!(
-                                "https://api.telegram.org/file/bot{token}/{p}",
+                                "https://api.telegram.org/file/bot{token}/{path}",
                                 token = bot.token()
                             );
-                            save(url).await?;
+                            save(&url).await?;
+                            bot.send_video(msg.chat.id, InputFile::file_id(video.video.file.id))
+                                .await?;
                         }
                         MediaKind::Photo(photo) => {
                             if let Some(p) = photo.photo.into_iter().max_by_key(|p| p.height) {
-                                let p = bot.get_file(p.file.id).send().await?.path;
+                                let path = bot.get_file(&p.file.id).send().await?.path;
                                 let url = format!(
-                                    "https://api.telegram.org/file/bot{token}/{p}",
+                                    "https://api.telegram.org/file/bot{token}/{path}",
                                     token = bot.token()
                                 );
-                                save(url).await?;
+                                save(&url).await?;
+                                bot.send_photo(msg.chat.id, InputFile::file_id(p.file.id))
+                                    .await?;
                             }
                         }
                         _ => {}
@@ -183,9 +187,10 @@ fn handler() -> UpdateHandler<anyhow::Error> {
         .branch(callback_query_handler)
 }
 
-async fn save(url: String) -> Result<()> {
+async fn save(url: impl AsRef<str>) -> Result<()> {
+    let url = url.as_ref();
     info!("Downloading: {}", url);
-    let res = client().get(&url).send().await?;
+    let res = client().get(url).send().await?;
     let bytes = res.bytes().await?;
     let ext = url
         .split(".")
