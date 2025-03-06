@@ -100,6 +100,7 @@ fn msg_handler() -> UpdateHandler<anyhow::Error> {
                                         .file_name
                                         .unwrap_or(document.document.file.id.clone()),
                                     msg.chat.id,
+                                    Bot::send_document,
                                 )
                                 .await?;
                                 Result::<_, anyhow::Error>::Ok(())
@@ -113,6 +114,7 @@ fn msg_handler() -> UpdateHandler<anyhow::Error> {
                                     &video.video.file.id,
                                     format!("{}.mp4", video.video.file.id),
                                     msg.chat.id,
+                                    Bot::send_video,
                                 )
                                 .await?;
                                 Result::<_, anyhow::Error>::Ok(())
@@ -129,6 +131,7 @@ fn msg_handler() -> UpdateHandler<anyhow::Error> {
                                         &photo.file.id,
                                         format!("{}.jpg", photo.file.id),
                                         msg.chat.id,
+                                        Bot::send_photo,
                                     )
                                     .await?;
                                 }
@@ -203,13 +206,18 @@ fn callback_handler() -> UpdateHandler<anyhow::Error> {
     Update::filter_callback_query()
 }
 
-async fn handle_file(
+async fn handle_file<F, Fut>(
     bot: Bot,
     ctx: Context,
     file_id: impl AsRef<str>,
     file_name: impl AsRef<str>,
     chat_id: ChatId,
-) -> Result<()> {
+    reply: F,
+) -> Result<()>
+where
+    F: Fn(&Bot, ChatId, InputFile) -> Fut,
+    Fut: core::future::IntoFuture<Output = core::result::Result<Message, teloxide::RequestError>>,
+{
     info!("Saving: {}", file_id.as_ref());
     let server_path = loop {
         if let Ok(f) = bot.get_file(file_id.as_ref()).send().await {
@@ -221,7 +229,6 @@ async fn handle_file(
     match ctx.local_server {
         false => {
             let mut file = fs::File::create(&save_path).await?;
-            info!("Saving: {}", save_path);
             bot.download_file(&server_path, &mut file).await?;
         }
         true => match ctx.container_manager {
@@ -232,19 +239,23 @@ async fn handle_file(
                     server_path,
                     &save_path,
                 )
-                .await?
+                .await?;
             }
             None => {
                 fs::copy(server_path, &save_path).await?;
             }
         },
     }
-    let reply_id = bot
-        .send_photo(chat_id, InputFile::file_id(file_id.as_ref().to_owned()))
-        .await?
-        .id
-        .0
-        .to_ne_bytes();
+
+    let reply_id = reply(
+        &bot,
+        chat_id,
+        InputFile::file_id(file_id.as_ref().to_owned()),
+    )
+    .await?
+    .id
+    .0
+    .to_ne_bytes();
     let msgs = ctx
         .db
         .open_tree(chat_id.0.to_ne_bytes())
