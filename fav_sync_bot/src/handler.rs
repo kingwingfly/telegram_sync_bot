@@ -211,7 +211,12 @@ async fn handle_file(
     chat_id: ChatId,
 ) -> Result<()> {
     info!("Saving: {}", file_id.as_ref());
-    let server_path = bot.get_file(file_id.as_ref()).send().await?.path;
+    let server_path = loop {
+        if let Ok(f) = bot.get_file(file_id.as_ref()).send().await {
+            break f.path;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    };
     let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
     match ctx.local_server {
         false => {
