@@ -21,3 +21,7 @@ serde_json = { version = "1" }
 sha256 = { version = "1.6.0" }
 # db
 sled = { version = "0.34.7" }
+
+[features]
+default = []
+local_server = []

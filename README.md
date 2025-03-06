@@ -45,8 +45,8 @@ podman build --target bot_runner -t bot --network host .
 # Windows or MacOS only
 podman machine init -v /path/to/output:/path/to/output bot_machine
 
-# WIP podman run  -itd -e TELEGRAM_API_ID=<api_id> -e TELEGRAM_API_HASH=<api_hash> server
-podman run -itd --env-file .env -v /path/to/output:/app/output --stop-signal SIGINT bot
+# WIP podman run --name server -itd -e TELEGRAM_API_ID=<api_id> -e TELEGRAM_API_HASH=<api_hash> -p 8081:8081 server
+podman run --name bot -itd --env-file .env -v /path/to/output:/app/output --stop-signal SIGINT bot
 ```
 
 # Systemd Service
