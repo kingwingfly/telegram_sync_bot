@@ -90,6 +90,8 @@ User=<...>
 WorkingDirectory=</path/to/output>
 ExecStartPre=/usr/bin/podman restart server
 ExecStart=/usr/local/bin/fav_sync_bot -l http://localhost:8081 -c podman -i server
+ExecStop=/bin/bash -c 'kill -SIGINT $MAINPID; for i in {1..5}; do sleep 1; kill -0 $MAINPID 2>/dev/null || exit 0; done; kill -SIGKILL $MAINPID'
+ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
 Environment="OWNER_ID=<...>"
