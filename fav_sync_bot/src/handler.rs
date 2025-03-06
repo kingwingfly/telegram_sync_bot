@@ -210,6 +210,7 @@ async fn handle_file(
     file_name: impl AsRef<str>,
     chat_id: ChatId,
 ) -> Result<()> {
+    info!("Saving: {}", file_id.as_ref());
     let server_path = bot.get_file(file_id.as_ref()).send().await?.path;
     let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
     match ctx.local_server {

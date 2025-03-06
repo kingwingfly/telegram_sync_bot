@@ -3,7 +3,7 @@ members = ["fav_sync_bot"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
