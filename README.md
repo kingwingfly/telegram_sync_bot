@@ -21,32 +21,32 @@ You need create a `.env` file with the following content:
 TELOXIDE_TOKEN=xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Your telegram id found in your profile
 OWNER_ID=xxxxxxxxxx
+# if you want to use local server:
+TELEGRAM_API_ID=...
+TELEGRAM_API_HASH=...
 ```
 
 Deploy:
-## Native (File size limit 20MB)
+## File size limit 20MB
 
 ```sh
-fav_sync_bot /path/to/output
+fav_sync_bot -o /path/to/output
 ```
 
-## With docker (No file size limit) \[WIP\]
+## No file size limit (local server)
 
-WIP: I'm stuck since I cannot get the app\_id and app\_hash from telegram.
-
-But you can still run the bot with docker although it's unnecessary.
-
+You can use the following command to build the telegram api bot local server image:
 ```sh
-# WIP podman build --target server_runner -t server --network host .
-podman build --target bot_runner -t bot --network host .
+podman build --target server_runner -t server --network host .
 ```
 
 ```sh
 # Windows or MacOS only
 podman machine init -v /path/to/output:/path/to/output bot_machine
 
-# WIP podman run --name server -itd -e TELEGRAM_API_ID=<api_id> -e TELEGRAM_API_HASH=<api_hash> -p 8081:8081 server
-podman run --name bot -itd --env-file .env -v /path/to/output:/app/output --stop-signal SIGINT bot
+podman run --name server -itd --env-file .env --network slirp4netns -p 8081:8081 server
+
+fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
 ```
 
 # Systemd Service
@@ -61,6 +61,26 @@ Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
 ExecStart=/usr/local/bin/fav_sync_bot
+Restart=on-failure
+Environment="TELOXIDE_TOKEN=<...>"
+Environment="OWNER_ID=<...>"
+
+[Install]
+WantedBy=multi-user.target
+```
+or with local server:
+```ini
+# fav-sync-bot.service
+[Unit]
+Description=Fav sync bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=<...>
+WorkingDirectory=</path/to/output>
+ExecStartPre=/usr/bin/podman restart server
+ExecStart=/usr/local/bin/fav_sync_bot -l http://localhost:8081 -c podman -i server
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
 Environment="OWNER_ID=<...>"

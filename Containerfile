@@ -34,8 +34,6 @@ WORKDIR /app
 
 COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
 
-CMD ["/app/fav_sync_bot", "/app/output"]
-
 ########################################
 
 FROM docker.io/alpine:latest AS server_runner
