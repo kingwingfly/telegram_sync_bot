@@ -6,9 +6,9 @@ Build with Rust and Teloxide.
 
 The bot will download the file and save it to the specified directory.
 
-Then it will send the saved file to the owner.
+Then it will send files saved back to the owner.
 
-The owner can react to the message with emoji to manage the file:
+The owner can then react to the messages with emoji to manage the file:
 - "👍" | "❤": move the file to favorite directory
 - "👎": delete the file
 
@@ -35,7 +35,7 @@ fav_sync_bot -o /path/to/output
 
 ## No file size limit (local server)
 
-You need apply for a telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
+You need to apply for a telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
 (If you always get `Error` during applying, try `cloudflare warp` as VPN)
 
 You can use the following command to build the telegram api bot local server image:
