@@ -35,9 +35,18 @@ fav_sync_bot -o /path/to/output
 
 ## No file size limit (local server)
 
+You need apply for a telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
+(If you always get `Error` during applying, try `cloudflare warp` as VPN)
+
 You can use the following command to build the telegram api bot local server image:
 ```sh
 podman build --target server_runner -t server --network host .
+```
+Or download and load one
+```sh
+cd /tmp
+curl -LO https://github.com/kingwingfly/fav_sync_bot/releases/download/v0.2.0/server.tar.gz
+podman load -i server.tar.gz
 ```
 
 ```sh
