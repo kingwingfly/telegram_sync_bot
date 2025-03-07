@@ -99,7 +99,7 @@ podman kube play sync-bot.yaml
 ```
 
 # Systemd Service
-Native without local server:
+## Native without local server:
 ```ini
 # /etc/systemd/system/sync-bot.service
 [Unit]
@@ -118,7 +118,7 @@ Environment="OWNER_ID=<...>"
 [Install]
 WantedBy=multi-user.target
 ```
-or with local server container and native fav_sync_bot (after the first setup):
+## or with local server container and native fav_sync_bot (after the first setup):
 ```ini
 # /etc/systemd/system/sync-bot.service
 [Unit]
@@ -140,17 +140,19 @@ Environment="OWNER_ID=<...>"
 [Install]
 WantedBy=multi-user.target
 ```
-or with pure pod (after the first setup):
+## or with pure pod (after images are built or loaded):
 ```ini
-# /etc/container/systemd/sync-bot.kube
+# /etc/container/systemd/users/<UserID>/sync-bot.kube
 [Unit]
 Description=Telegram file sync bot
 After=network-online.target run-media-louis-Local\x20Disk.mount
 
 [Kube]
-Yaml=/etc/containers/systemd/sync-bot.yaml
+Yaml=/etc/containers/systemd/users/<UserID>/sync-bot.yaml
 
 [Install]
 WantedBy=default.target
 ```
-note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.
+Search `podman quadlet` for using podman kube play as systemd service.
+
+Note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.
