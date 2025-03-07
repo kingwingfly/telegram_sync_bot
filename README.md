@@ -153,3 +153,4 @@ Yaml=/etc/containers/systemd/sync-bot.yaml
 [Install]
 WantedBy=default.target
 ```
+note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.

@@ -1,11 +1,12 @@
 FROM docker.io/rust:1.85.0-alpine AS bot_builder
 
-COPY . .
 
 RUN apk update \
     && apk add --no-cache --purge libc-dev openssl-dev openssl-libs-static pkgconfig
 
 WORKDIR /work
+
+COPY . .
 
 RUN cargo fetch
 RUN cargo build --release
