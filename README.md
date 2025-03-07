@@ -56,7 +56,7 @@ podman machine start bot_machine
 
 You can use the following command to build the telegram api bot local server image:
 ```sh
-podman build --target server -t server --network host pod/server
+podman build --target server -t server --network host server
 ```
 Or download and load from the release page (`server.tar.gz`).
 
@@ -73,7 +73,7 @@ fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
 Build `fav_sync_bot` in to container image:
 ```sh
 # build bot image
-podman build --target bot -t bot --network host pod/bot
+podman build --target bot -t bot --network host bot
 ```
 Or download and load from the release page (bot.tar.gz).
 
@@ -90,12 +90,12 @@ podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
 
 ### run as podman kube play
 
-Modify `pod/sync-bot.yaml` to fit your need.
+Modify `sync-bot.yaml` to fit your need.
 
 You can download and load `server.tar.gz` and `bot.tar.gz` from the release page first.
 Or command below will automatically build the image for you.
 ```sh
-cd pod && podman kube play pod/sync-bot.yaml
+podman kube play sync-bot.yaml
 ```
 
 # Systemd Service

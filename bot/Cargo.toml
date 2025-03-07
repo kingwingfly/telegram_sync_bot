@@ -1,5 +1,6 @@
+# This file is for Containerfile
 [workspace]
-members = ["bot/fav_sync_bot"]
+members = ["fav_sync_bot"]
 resolver = "2"
 
 [workspace.package]
