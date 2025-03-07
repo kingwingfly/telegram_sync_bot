@@ -38,6 +38,15 @@ fav_sync_bot -o /path/to/output
 You need to apply for a telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
 (If you always get `Error` during applying, try `cloudflare warp` as VPN)
 
+We provide two ways here:
+- native
+- pod
+
+Both ways need to run local server in container.
+(You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.)
+
+Any way, get local server image first:
+
 You can use the following command to build the telegram api bot local server image:
 ```sh
 podman build --target server_runner -t server --network host .
@@ -49,6 +58,8 @@ curl -LO https://github.com/kingwingfly/fav_sync_bot/releases/download/v0.2.0/se
 podman load -i server.tar.gz
 ```
 
+### normal way
+
 ```sh
 # Windows or MacOS only
 podman machine init -v /path/to/output:/path/to/output bot_machine
@@ -56,6 +67,21 @@ podman machine init -v /path/to/output:/path/to/output bot_machine
 podman run --name server -itd --env-file .env --network slirp4netns -p 8081:8081 server
 
 fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
+```
+
+### run as pod
+
+Build `fav_sync_bot` in to container image:
+```sh
+podman build --target bot_runner -t bot --network host .
+
+podman pod create sync_bot
+podman volume create cache
+podman run --pod sync_bot --name server -itd --env-file .env \
+    --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> server
+podman run --pod sync_bot --name bot -itd --env-file .env -v /path/to/output:/app/output  \
+    --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> bot \
+    -l http://server:8081
 ```
 
 # Systemd Service

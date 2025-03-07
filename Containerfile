@@ -34,6 +34,8 @@ WORKDIR /app
 
 COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
 
+ENTRYPOINT ["/app/fav_sync_bot"]
+
 ########################################
 
 FROM docker.io/alpine:latest AS server_runner
@@ -47,4 +49,6 @@ COPY --from=server_builder /telegram-bot-api/bin/telegram-bot-api /app/
 
 EXPOSE 8081
 
-CMD ["/app/telegram-bot-api", "--local"]
+ENTRYPOINT ["/app/telegram-bot-api"]
+
+CMD ["--local"]
