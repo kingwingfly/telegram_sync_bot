@@ -47,6 +47,12 @@ Both ways need to run local server in container.
 
 Any way, get local server image first:
 
+Prepare (Windows or MacOS only):
+```sh
+podman machine init -v /path/to/output:/path/to/output bot_machine
+podman machine start bot_machine
+```
+
 You can use the following command to build the telegram api bot local server image:
 ```sh
 podman build --target server_runner -t server --network host .
@@ -61,9 +67,6 @@ podman load -i server.tar.gz
 ### normal way
 
 ```sh
-# Windows or MacOS only
-podman machine init -v /path/to/output:/path/to/output bot_machine
-
 podman run --name server -itd --env-file .env --network slirp4netns -p 8081:8081 server
 
 fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
@@ -73,13 +76,15 @@ fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
 
 Build `fav_sync_bot` in to container image:
 ```sh
+# build bot image (you can also download in release page and load it)
 podman build --target bot_runner -t bot --network host .
 
 podman pod create sync_bot
 podman volume create cache
 podman run --pod sync_bot --name server -itd --env-file .env \
     --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> server
-podman run --pod sync_bot --name bot -itd --env-file .env -v /path/to/output:/app/output  \
+podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
+    -v /path/to/output:/app/output  \
     --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> bot \
     -l http://server:8081
 ```
@@ -103,7 +108,7 @@ Environment="OWNER_ID=<...>"
 [Install]
 WantedBy=multi-user.target
 ```
-or with local server:
+or with local server container and native fav_sync_bot (after the first setup):
 ```ini
 # fav-sync-bot.service
 [Unit]
@@ -121,6 +126,23 @@ ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
 Environment="OWNER_ID=<...>"
+
+[Install]
+WantedBy=multi-user.target
+```
+or with pod (after the first setup):
+```ini
+# fav-sync-bot.service
+[Unit]
+Description=Fav sync bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=<...>
+ExecStart=/usr/bin/podman restart sync_bot
+ExecStop=/usr/bin/podman stop sync_bot
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

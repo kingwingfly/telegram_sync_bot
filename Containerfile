@@ -30,11 +30,14 @@ RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
 
 FROM docker.io/alpine:latest AS bot_runner
 
+RUN apk update \
+    && apk add --no-cache --purge bash
+
 WORKDIR /app
 
 COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
 
-ENTRYPOINT ["/app/fav_sync_bot"]
+ENTRYPOINT ["/app/fav_sync_bot", "-o", "output"]
 
 ########################################
 
