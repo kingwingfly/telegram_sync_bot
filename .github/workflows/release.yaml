@@ -34,13 +34,17 @@ jobs:
           sudo apt-get install -y podman
       - name: build images
         run: |
-          podman build --target bot_runner -t bot --network host .
+          podman build --target bot -t bot --network host pod/bot
           podman save localhost/bot:latest | gzip > bot.tar.gz
+          podman build --target server -t server --network host pod/server
+          podman save localhost/server:latest | gzip > server.tar.gz
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: bot.tar.gz
+          files: |
+            bot.tar.gz
+            server.tar.gz
 
   upload-assets:
     needs: create-release

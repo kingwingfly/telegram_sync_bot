@@ -1,0 +1,47 @@
+apiVersion: v1
+Kind: ConfigMap
+metadata:
+  name: config
+data:
+  TELOXIDE_TOKEN:
+  OWNER_ID:
+  TELEGRAM_API_ID:
+  TELEGRAM_API_HASH:
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sync-bot
+spec:
+  volumes:
+    - name: cache
+      persistentVolumeClaim:
+        claimName: cache
+    - hostPath:
+        path: <OUTPUT_DIR> # Path to the output directory on the host
+        type: Directory
+      name: output
+  containers:
+    - name: server
+      image: server
+      envFrom:
+        - configMapRef:
+            name: config
+            optional: false
+      volumeMounts:
+        - mountPath: /app/data
+          name: cache
+    - name: bot
+      image: bot
+      args:
+        - -l
+        - http://server:8081
+      envFrom:
+        - configMapRef:
+            name: config
+            optional: false
+      volumeMounts:
+        - mountPath: /app/output
+          name: output
+        - mountPath: /app/data
+          name: cache

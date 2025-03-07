@@ -41,8 +41,9 @@ You need to apply for a telegram api id and hash from [Telegram](https://core.te
 We provide two ways here:
 - native
 - pod
+- podman kube play
 
-Both ways need to run local server in container.
+All ways need to run local server in container.
 (You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.)
 
 Any way, get local server image first:
@@ -55,14 +56,9 @@ podman machine start bot_machine
 
 You can use the following command to build the telegram api bot local server image:
 ```sh
-podman build --target server_runner -t server --network host .
+podman build --target server -t server --network host pod/server
 ```
-Or download and load one
-```sh
-cd /tmp
-curl -LO https://github.com/kingwingfly/fav_sync_bot/releases/download/v0.2.0/server.tar.gz
-podman load -i server.tar.gz
-```
+Or download and load from the release page (`server.tar.gz`).
 
 ### normal way
 
@@ -76,24 +72,38 @@ fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
 
 Build `fav_sync_bot` in to container image:
 ```sh
-# build bot image (you can also download in release page and load it)
-podman build --target bot_runner -t bot --network host .
+# build bot image
+podman build --target bot -t bot --network host pod/bot
+```
+Or download and load from the release page (bot.tar.gz).
 
+```sh
 podman pod create sync_bot
 podman volume create cache
 podman run --pod sync_bot --name server -itd --env-file .env \
-    --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> server
+    --mount type=volume,source=cache,destination=/app/data server
 podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
     -v /path/to/output:/app/output  \
-    --mount type=volume,source=cache,destination=/app/<TELOXIDE_TOKEN> bot \
+    --mount type=volume,source=cache,destination=/app/data bot \
     -l http://server:8081
 ```
 
+### run as podman kube play
+
+Modify `pod/sync-bot.yaml` to fit your need.
+
+You can download and load `server.tar.gz` and `bot.tar.gz` from the release page first.
+Or command below will automatically build the image for you.
+```sh
+cd pod && podman kube play pod/sync-bot.yaml
+```
+
 # Systemd Service
+Native without local server:
 ```ini
-# fav-sync-bot.service
+# /etc/systemd/system/sync-bot.service
 [Unit]
-Description=Fav sync bot
+Description=Telegram file sync bot
 After=network-online.target
 
 [Service]
@@ -110,9 +120,9 @@ WantedBy=multi-user.target
 ```
 or with local server container and native fav_sync_bot (after the first setup):
 ```ini
-# fav-sync-bot.service
+# /etc/systemd/system/sync-bot.service
 [Unit]
-Description=Fav sync bot
+Description=Telegram file sync bot
 After=network-online.target
 
 [Service]
@@ -130,20 +140,16 @@ Environment="OWNER_ID=<...>"
 [Install]
 WantedBy=multi-user.target
 ```
-or with pod (after the first setup):
+or with pure pod (after the first setup):
 ```ini
-# fav-sync-bot.service
+# /etc/container/systemd/sync-bot.kube
 [Unit]
-Description=Fav sync bot
-After=network-online.target
+Description=Telegram file sync bot
+After=network-online.target run-media-louis-Local\x20Disk.mount
 
-[Service]
-Type=simple
-User=<...>
-ExecStart=/usr/bin/podman restart sync_bot
-ExecStop=/usr/bin/podman stop sync_bot
-Restart=on-failure
+[Kube]
+Yaml=/etc/containers/systemd/sync-bot.yaml
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```

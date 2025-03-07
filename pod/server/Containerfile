@@ -1,16 +1,3 @@
-FROM docker.io/rust:1.85.0-alpine AS bot_builder
-
-RUN apk update \
-    && apk add --no-cache --purge libc-dev openssl-dev openssl-libs-static pkgconfig
-
-WORKDIR /work
-COPY . .
-
-RUN cargo fetch
-RUN cargo build --release
-
-########################################
-
 FROM docker.io/alpine:latest AS server_builder
 
 RUN apk update \
@@ -28,20 +15,7 @@ RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
 
 ########################################
 
-FROM docker.io/alpine:latest AS bot_runner
-
-RUN apk update \
-    && apk add --no-cache --purge bash
-
-WORKDIR /app
-
-COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
-
-ENTRYPOINT ["/app/fav_sync_bot", "-o", "output"]
-
-########################################
-
-FROM docker.io/alpine:latest AS server_runner
+FROM docker.io/alpine:latest AS server
 
 RUN apk update \
     && apk add --no-cache --purge bash openssl zlib libstdc++
@@ -54,4 +28,4 @@ EXPOSE 8081
 
 ENTRYPOINT ["/app/telegram-bot-api"]
 
-CMD ["--local"]
+CMD ["-d", "/app/data", "--local"]

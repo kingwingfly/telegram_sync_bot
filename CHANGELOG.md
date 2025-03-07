@@ -9,6 +9,11 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.2.4] - 2025-03-07
+
+- kube play support
+- cautions: user updated to this version should reload or rebuild the images
+
 ## [0.2.3] - 2025-03-07
 
 - release images
