@@ -35,18 +35,15 @@ fav_sync_bot -o /path/to/output
 
 ## No file size limit (local server)
 
-You need to apply for a telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
+You need to apply for telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
 (If you always get `Error` during applying, try `cloudflare warp` as VPN)
 
-We provide two ways here:
-- native
-- pod
-- podman kube play
+All methods need to run local server in container first.
 
-All ways need to run local server in container.
-(You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.)
+(You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.
+I'll just skip this method here)
 
-Any way, get local server image first:
+Get local server image first:
 
 Prepare (Windows or MacOS only):
 ```sh
@@ -58,9 +55,14 @@ You can use the following command to build the telegram api bot local server ima
 ```sh
 podman build --target server -t server --network host server
 ```
-Or download and load from the release page (`server.tar.gz`).
+Or download and load from the release page (`server.tar.gz`), I've built one through GitHub Action for you.
 
-### normal way
+We provide three ways here:
+- native
+- pod
+- podman kube play
+
+### normal way: server in container but bot native
 
 ```sh
 podman run --name server -itd --env-file .env --network slirp4netns -p 8081:8081 server
@@ -70,30 +72,31 @@ fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
 
 ### run as pod
 
-Build `fav_sync_bot` in to container image:
+Build `fav_sync_bot` into container image:
 ```sh
 # build bot image
 podman build --target bot -t bot --network host bot
 ```
 Or download and load from the release page (bot.tar.gz).
 
+Start server and bot in a pod:
 ```sh
 podman pod create sync_bot
 podman volume create cache
 podman run --pod sync_bot --name server -itd --env-file .env \
-    --mount type=volume,source=cache,destination=/app/data server
+    -v cache:/app/data server
 podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
     -v /path/to/output:/app/output  \
-    --mount type=volume,source=cache,destination=/app/data bot \
+    --mount cache:/app/data bot \
     -l http://server:8081
 ```
 
-### run as podman kube play
+### run with podman kube play
 
 Modify `sync-bot.yaml` to fit your need.
 
 You can download and load `server.tar.gz` and `bot.tar.gz` from the release page first.
-Or command below will automatically build the image for you.
+Or command below will automatically build the image for you which cost a lot of time.
 ```sh
 podman kube play sync-bot.yaml
 ```
