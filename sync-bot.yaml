@@ -21,6 +21,7 @@ spec:
         path: <OUTPUT_DIR> # Path to the output directory on the host
         type: Directory
       name: output
+
   containers:
     - name: server
       image: server
@@ -31,6 +32,7 @@ spec:
       volumeMounts:
         - mountPath: /app/data
           name: cache
+
     - name: bot
       image: bot
       args:
