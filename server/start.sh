@@ -5,7 +5,7 @@
 app_pid=$!
 
 # check if telegram-bot-api is running
-if ! ps -p "$app_pid" > /dev/null 2>&1; then
+if [ ! -d /proc/$app_pid ]; then
     echo "Error: Failed to start telegram-bot-api" >&2
     exit 1
 fi
