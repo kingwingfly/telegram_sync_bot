@@ -53,7 +53,7 @@ podman machine start bot_machine
 
 You can use the following command to build the telegram api bot local server image:
 ```sh
-podman build --target server -t server --network host server
+cd server && podman build --target server -t server --network host .
 ```
 Or download and load from the release page (`server.tar.gz`), I've built one through GitHub Action for you.
 
