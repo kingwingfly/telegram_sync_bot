@@ -1,15 +1,15 @@
 FROM docker.io/alpine:latest AS server_builder
 
 RUN apk update \
-    && apk add --no-cache --purge alpine-sdk linux-headers git zlib-dev openssl-dev gperf cmake
+    && apk add --no-cache --purge alpine-sdk linux-headers git zlib-dev openssl-dev gperf cmake ninja
 
 RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
     && cd telegram-bot-api \
     && rm -rf build \
     && mkdir build \
     && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=.. .. \
-    && cmake --build . --target install \
+    && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=.. .. \
+    && ninja install \
     && cd ../.. \
     && ls -l telegram-bot-api/bin/telegram-bot-api*
 

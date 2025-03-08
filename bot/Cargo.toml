@@ -1,6 +1,6 @@
 [package]
 name = "fav_sync_bot"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
