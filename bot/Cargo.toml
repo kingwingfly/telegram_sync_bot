@@ -1,21 +1,37 @@
-# This file is for Containerfile
-[workspace]
-members = ["fav_sync_bot"]
-resolver = "2"
-
-[workspace.package]
-version = "0.2.4"
+[package]
+name = "fav_sync_bot"
+version = "0.2.5"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
 license = "MIT"
+keywords = ["telegram", "bot"]
 
-[workspace.dependencies]
+[dependencies]
+# env
+dotenv = { version = "0.15" }
+# cli
+clap = { version = "4.5.31", features = ["derive"] }
+# error
+anyhow = { version = "1.0.86" }
+# telegram
+teloxide = { version = "0.13", features = ["macros", "ctrlc_handler"] }
+# tracing
+log = "0.4"
+pretty_env_logger = "0.4"
+# runtime
+tokio = { version = "1.8", features = [
+    "rt-multi-thread",
+    "macros",
+    "signal",
+    "process",
+] }
+# serde
+serde_json = { version = "1" }
+# sha256
+sha256 = { version = "1.6.0" }
+# db
+sled = { version = "0.34.7" }
 
-
-[profile.release]
-lto = "fat"
-opt-level = 3
-codegen-units = 1
-strip = "debuginfo"
-panic = "abort"
+[features]
+default = []

@@ -1,6 +1,5 @@
 FROM docker.io/rust:1.85.0-alpine AS bot_builder
 
-
 RUN apk update \
     && apk add --no-cache --purge libc-dev openssl-dev openssl-libs-static pkgconfig
 

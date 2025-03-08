@@ -34,9 +34,9 @@ jobs:
           sudo apt-get install -y podman
       - name: build images
         run: |
-          podman build --target bot -t bot --network host bot
+          cd bot && podman build --target bot -t bot --network host . && cd ..
           podman save localhost/bot:latest | gzip > bot.tar.gz
-          podman build --target server -t server --network host server
+          cd server && podman build --target server -t server --network host . && cd ..
           podman save localhost/server:latest | gzip > server.tar.gz
       - name: Release
         uses: softprops/action-gh-release@v2
