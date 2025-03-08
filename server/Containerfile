@@ -17,8 +17,11 @@ RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
 
 FROM docker.io/alpine:latest AS server
 
+COPY . .
+
 RUN apk update \
-    && apk add --no-cache --purge bash openssl zlib libstdc++
+    && apk add --no-cache --purge bash openssl zlib libstdc++   \
+    && chmod +x /app/start.sh
 
 WORKDIR /app
 
@@ -26,6 +29,4 @@ COPY --from=server_builder /telegram-bot-api/bin/telegram-bot-api /app/
 
 EXPOSE 8081
 
-ENTRYPOINT ["/app/telegram-bot-api"]
-
-CMD ["-d", "/app/data", "--local"]
+ENTRYPOINT ["/app/start.sh"]
