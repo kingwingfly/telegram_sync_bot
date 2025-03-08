@@ -1,5 +1,7 @@
 FROM docker.io/alpine:latest AS server_builder
 
+COPY start.sh .
+
 RUN apk update \
     && apk add --no-cache --purge alpine-sdk linux-headers git zlib-dev openssl-dev gperf cmake ninja
 
@@ -17,16 +19,15 @@ RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git \
 
 FROM docker.io/alpine:latest AS server
 
+WORKDIR /app
+
 COPY start.sh .
+COPY --from=server_builder /telegram-bot-api/bin/telegram-bot-api .
 
 RUN apk update \
     && apk add --no-cache --purge bash openssl zlib libstdc++   \
-    && chmod +x /app/start.sh
-
-WORKDIR /app
-
-COPY --from=server_builder /telegram-bot-api/bin/telegram-bot-api /app/
+    && chmod +x ./start.sh
 
 EXPOSE 8081
 
-ENTRYPOINT ["/app/start.sh"]
+ENTRYPOINT ["./start.sh"]

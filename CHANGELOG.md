@@ -9,12 +9,9 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
-## [0.2.6] - 2025-03-09
-
-- speed up build with `ninja`
-
 ## [0.2.5] - 2025-03-09
 
+- speed up build with `ninja`
 - the bot image will stop with SIGINT
 - the server image will wait 5 seconds before exit
 
