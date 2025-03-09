@@ -23,6 +23,7 @@ pub struct Context {
 
     pub output_dir: PathBuf,
     pub fav_dir: PathBuf,
+    pub trash_dir: PathBuf,
 
     pub db: Db,
 }

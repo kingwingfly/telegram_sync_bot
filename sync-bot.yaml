@@ -38,6 +38,8 @@ spec:
       args:
         - -l
         - http://server:8081
+        - -f10
+        - -d-10
       envFrom:
         - configMapRef:
             name: config

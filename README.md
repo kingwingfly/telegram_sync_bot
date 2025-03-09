@@ -4,17 +4,42 @@ This is a telegram bot that can be used to download files forwarded to the bot b
 
 Build with Rust and Teloxide.
 
+## file sent directly to the bot
+
 The bot will download the file and save it to the specified directory.
 
-Then it will send files saved back to the owner.
+Then it will send files saved back to the owner (This is necessary for it's prevented to midify user sent messages).
 
-The owner can then react to the messages with emoji to manage the file:
+The owner can then react to the returned messages with emoji to manage the file:
 - "👍" | "❤": move the file to favorite directory
-- "👎": delete the file
+- "👎": move the file to trash
 
-# Usage
+## file sent to bot managed channel
 
-You need create a `.env` file with the following content:
+Initially, the bot owner send `/unpause <bypass_pwd>` to the bot to unpause the bot
+(the `<bypass_pwd>` can be seen in the log, and send `/bypasspwd` to reprint the pwd in the log).
+
+The bot will set "🫡" reaction to the file message to indicate the file is downloading.
+
+Once done, the bot will set "👌".
+
+People can react to the file with emoji, and the bot will count the score of the file.
+
+| Emoji | Score |
+| --- | --- |
+|👍😁🙏😇🤗|+1|
+|❤🔥🥰🎉🍌💋💘😘|+2|
+|❤‍🔥|+3|
+|👎🤯😱😢🥴🌚😐🖕😨|-1|
+|🤬🤮💩🤡💔😡|-2|
+
+If the score >= fav_score_limit, the bot will move the file to favorite directory.
+
+If the score < delete_score_limit, the bot will move the file to trash and delete from channel.
+
+# Deploy
+
+You could create a `.env` file with the following content:
 
 ```ini
 # Get from botfather
@@ -28,6 +53,30 @@ TELEGRAM_API_HASH=...
 
 Deploy:
 ## File size limit 20MB
+
+```
+A telegram bot to sync files to local server.
+
+Usage: fav_sync_bot [OPTIONS]
+
+Options:
+  -o, --output <OUTPUT>
+          The directory to store the files [default: .]
+  -l, --local-server-url <LOCAL_SERVER_URL>
+          The url if you are using a local server
+  -c, --container-manager <CONTAINER_MANAGER>
+          The container manager to use if deploying server in a container
+  -i, --container-id <CONTAINER_ID>
+          The container id or name if deploying server in a container
+  -f, --fav-score-limit <FAV_SCORE_LIMIT>
+          Score limit to favorite a file, > 0 (channel only) [default: 10]
+  -d, --delete-score-limit <DELETE_SCORE_LIMIT>
+          Score limit to delete a file, < 0 (channel only, e.g `-d-10`) [default: -10]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+```
 
 ```sh
 fav_sync_bot -o /path/to/output

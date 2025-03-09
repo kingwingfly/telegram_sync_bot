@@ -94,6 +94,11 @@ impl Cli {
                 std::fs::create_dir_all(&fav_dir)?;
                 fav_dir
             },
+            trash_dir: {
+                let trash_dir = args.output.join("trash");
+                std::fs::create_dir_all(&trash_dir)?;
+                trash_dir
+            },
             db: sled::open(args.output.join("data.sled")).context("Failed to open db")?,
             output_dir: args.output,
             fav_score_limit: args.fav_score_limit,

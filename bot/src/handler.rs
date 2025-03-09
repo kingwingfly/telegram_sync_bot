@@ -219,10 +219,12 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                 info!("Fav: {}", target_path);
                             }
                             "👎" => {
+                                let target_path =
+                                    format!("{}/{}", ctx.trash_dir.display(), file_name);
                                 msgs.remove(msg_id).context("Failed to remove msg_id")?;
                                 bot.delete_message(reaction.chat.id, reaction.message_id)
                                     .await?;
-                                fs::remove_file(&file_path).await?;
+                                fs::rename(&file_path, target_path).await?;
                                 info!("Delete: {}", file_path.display());
                             }
                             _ => {}
@@ -297,11 +299,19 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                             .context("Failed to update msg and file path")?;
                         info!("Fav: {}", target_path);
                     } else if score < ctx.delete_score_limit {
-                        msgs.remove(msg_id).context("Failed to remove msg_id")?;
+                        let target_path = format!("{}/{}", ctx.trash_dir.display(), file_name);
+                        msgs.remove(msg_id)
+                            .context("Failed to update msg and file path")?;
                         bot.delete_message(reaction.chat.id, reaction.message_id)
                             .await?;
-                        fs::remove_file(&file_path).await?;
+                        fs::rename(&file_path, target_path).await?;
                         info!("Delete: {}", file_path.display());
+                    } else {
+                        let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
+                        fs::rename(file_path, &target_path).await?;
+                        msgs.insert(msg_id, target_path.as_bytes())
+                            .context("Failed to update msg and file path")?;
+                        info!("Unfav: {}", target_path);
                     }
                 }
             }
@@ -380,6 +390,8 @@ fn channel_post_handler() -> UpdateHandler<anyhow::Error> {
 fn callback_handler() -> UpdateHandler<anyhow::Error> {
     Update::filter_callback_query()
 }
+
+// handler helper functions
 
 async fn save_file(
     bot: &Bot,
