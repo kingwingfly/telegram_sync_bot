@@ -14,6 +14,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 - support channel management: the bot will generate a dynamic bypass password, use `/unpause <password>` to unpause the bot
 - rename env var `OWNER_ID` to `BYPASS_USERS`
 - do not remove the file, move to trash instead
+- move from `sled` to `sqlite`
 
 ## [0.2.5] - 2025-03-09
 

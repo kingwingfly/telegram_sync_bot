@@ -2,6 +2,7 @@ mod bot;
 mod cli;
 mod context;
 mod handler;
+mod storage;
 mod utils;
 
 use log::error;

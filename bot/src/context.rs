@@ -1,5 +1,5 @@
 use core::fmt;
-use sled::Db;
+use std::ops::Deref;
 use std::{
     collections::HashSet,
     path::PathBuf,
@@ -9,11 +9,16 @@ use teloxide::types::UserId;
 
 #[derive(Debug, Clone)]
 pub struct Context {
+    pub inner: Arc<ContextInner>,
+}
+
+#[derive(Debug)]
+pub struct ContextInner {
     pub local_server: bool,
     pub container_manager: Option<String>,
     pub container_id: Option<String>,
 
-    pub bypass_pwd: Arc<RwLock<String>>,
+    pub bypass_pwd: RwLock<String>,
     pub bypass_users: HashSet<UserId>,
 
     // channel only: score >= fav_score_limit will be fav
@@ -24,8 +29,6 @@ pub struct Context {
     pub output_dir: PathBuf,
     pub fav_dir: PathBuf,
     pub trash_dir: PathBuf,
-
-    pub db: Db,
 }
 
 impl fmt::Display for Context {
@@ -38,5 +41,13 @@ impl fmt::Display for Context {
         write!(f, "bypass users: {:?}, ", self.bypass_users)?;
         write!(f, "output_dir: {:?}, ", self.output_dir)?;
         write!(f, "fav_dir: {:?}", self.fav_dir)
+    }
+}
+
+impl Deref for Context {
+    type Target = ContextInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
