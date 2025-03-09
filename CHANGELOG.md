@@ -11,6 +11,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 ## [Unreleased]
 ## [0.3.1] - 2025-03-10
 
+- fix bug: the bot will check the path exists before operate
 - log more detailed Context
 - pin while fav, unpin while unfav or delete
 

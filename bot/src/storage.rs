@@ -1,7 +1,7 @@
 use anyhow::{Context as _, Result, anyhow};
 use log::info;
 use sqlx::{Row, SqlitePool, query, sqlite::SqliteConnectOptions};
-use std::ops::Deref;
+use std::{ops::Deref, path::Path};
 use teloxide::types::{ChatId, MessageId};
 
 const CREATE_TABLES: &str = r#"
@@ -114,7 +114,10 @@ impl MyStorage {
             .fetch_optional(&self.db)
             .await
             .context("Failed to get path")
-            .map(|row| row.map(|row| row.get("path")))
+            .map(|row| match row.map(|row| row.get("path")) {
+                Some(path) if Path::new(&path).exists() => Some(path),
+                _ => None,
+            })
     }
 
     /// get path for file_id
@@ -124,7 +127,10 @@ impl MyStorage {
             .fetch_optional(&self.db)
             .await
             .context("Failed to get path")
-            .map(|row| row.map(|row| row.get("path")))
+            .map(|row| match row.map(|row| row.get("path")) {
+                Some(path) if Path::new(&path).exists() => Some(path),
+                _ => None,
+            })
     }
 
     /// update path for file_id of chat_id and msg_id
