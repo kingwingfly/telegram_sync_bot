@@ -1,27 +1,19 @@
 use crate::{cli::Cli, handler::handler};
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 
 #[derive(Clone, Default, Debug)]
 pub enum State {
-    #[default]
+    #[cfg_attr(not(debug_assertions), default)]
     Paused,
+    #[cfg_attr(debug_assertions, default)]
     Working,
 }
 
 pub async fn run() -> Result<()> {
     let (bot, context) = Cli::init()?;
     Dispatcher::builder(bot, handler())
-        .dependencies(dptree::deps![
-            InMemStorage::<State>::new(),
-            context,
-            UserId(
-                std::env::var("OWNER_ID")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .context("INVALID OWNER_ID")?
-            )
-        ])
+        .dependencies(dptree::deps![InMemStorage::<State>::new(), context])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

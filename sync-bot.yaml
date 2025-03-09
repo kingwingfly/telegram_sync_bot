@@ -4,7 +4,7 @@ metadata:
   name: config
 data:
   TELOXIDE_TOKEN: # Telegram bot token
-  OWNER_ID: # Telegram user ID, only id matches can bot switch the chat to working mode
+  BYPASS_USERS: # Telegram user IDs, only id or dynamic pwd matches can bot switch the chat to working mode
   TELEGRAM_API_ID: # Telegram API ID
   TELEGRAM_API_HASH: # Telegram API hash
 ---

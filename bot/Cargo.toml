@@ -1,6 +1,6 @@
 [package]
 name = "fav_sync_bot"
-version = "0.2.5"
+version = "0.3.0"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
@@ -32,6 +32,8 @@ serde_json = { version = "1" }
 sha256 = { version = "1.6.0" }
 # db
 sled = { version = "0.34.7" }
+# rand
+rand = { version = "0.9.0" }
 
 [features]
 default = []

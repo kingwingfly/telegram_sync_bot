@@ -20,7 +20,7 @@ You need create a `.env` file with the following content:
 # Get from botfather
 TELOXIDE_TOKEN=xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Your telegram id found in your profile
-OWNER_ID=xxxxxxxxxx
+BYPASS_USERS=xxxxx,xxxxx
 # if you want to use local server:
 TELEGRAM_API_ID=...
 TELEGRAM_API_HASH=...
@@ -116,7 +116,7 @@ WorkingDirectory=</path/to/output>
 ExecStart=/usr/local/bin/fav_sync_bot
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
-Environment="OWNER_ID=<...>"
+Environment="BYPASS_USERS=<...>"
 
 [Install]
 WantedBy=multi-user.target
@@ -138,7 +138,7 @@ ExecStop=/bin/bash -c 'kill -SIGINT $MAINPID; for i in {1..5}; do sleep 1; kill 
 ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
-Environment="OWNER_ID=<...>"
+Environment="BYPASS_USERS=<...>"
 
 [Install]
 WantedBy=multi-user.target

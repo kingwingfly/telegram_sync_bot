@@ -9,6 +9,11 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.3.0] - 2025-03-09
+
+- support channel management: the bot will generate a dynamic bypass password, use `/unpause <password>` to unpause the bot
+- rename env var `OWNER_ID` to `BYPASS_USERS`
+
 ## [0.2.5] - 2025-03-09
 
 - speed up build with `ninja`

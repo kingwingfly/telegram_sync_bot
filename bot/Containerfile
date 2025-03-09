@@ -24,3 +24,5 @@ COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
 STOPSIGNAL SIGINT
 
 ENTRYPOINT ["/app/fav_sync_bot", "-o", "output"]
+
+CMD ["-f10", "-d-10"]

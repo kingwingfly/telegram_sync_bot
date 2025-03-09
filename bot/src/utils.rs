@@ -1,5 +1,6 @@
 use anyhow::{Result, anyhow};
 use log::info;
+use rand::{Rng as _, distr::Alphanumeric};
 use tokio::process;
 
 pub async fn cp_from_container(
@@ -23,4 +24,12 @@ pub async fn cp_from_container(
         return Err(anyhow!("Failed to copy from local server container"));
     }
     Ok(())
+}
+
+pub fn gen_pwd() -> String {
+    rand::rng()
+        .sample_iter(Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect()
 }
