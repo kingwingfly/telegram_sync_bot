@@ -39,8 +39,11 @@ impl fmt::Display for Context {
             .field("container_id", &self.container_id)
             .field("bypasskey", &self.bypasskey.read().unwrap())
             .field("bypass_users", &self.bypass_users)
+            .field("fav", &format!("score >= {}", self.fav_score_limit))
+            .field("delete", &format!("score < {}", self.delete_score_limit))
             .field("output_dir", &self.output_dir)
             .field("fav_dir", &self.fav_dir)
+            .field("trash dir", &self.trash_dir)
             .finish()
     }
 }
