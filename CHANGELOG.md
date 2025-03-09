@@ -12,6 +12,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 ## [0.3.1] - 2025-03-10
 
 - log more detailed Context
+- pin while fav, unpin while unfav or delete
 
 ## [0.3.0] - 2025-03-10
 

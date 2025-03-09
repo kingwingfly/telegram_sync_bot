@@ -202,26 +202,26 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         .and_then(|file| file.to_str())
                         .context("Failed to read filename from db")?;
 
+                    let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                     if let Some(ReactionType::Emoji { emoji }) = reaction.new_reaction.first() {
                         match emoji.as_str() {
                             "👍" | "❤" => {
                                 let target_path =
                                     format!("{}/{}", ctx.fav_dir.display(), file_name);
                                 fs::rename(file_path, &target_path).await?;
-                                db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                                    .await?;
+                                db.update_path(chat_id, msg_id, &target_path).await?;
                                 info!("Fav: {}", target_path);
+                                pin_msg(&bot, chat_id, msg_id).await?;
                             }
                             "👎" => {
                                 let target_path =
                                     format!("{}/{}", ctx.trash_dir.display(), file_name);
-                                bot.delete_message(reaction.chat.id, reaction.message_id)
-                                    .await?;
+                                bot.delete_message(chat_id, msg_id).await?;
                                 info!("Deleted disliked message");
                                 fs::rename(&file_path, &target_path).await?;
-                                db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                                    .await?;
+                                db.update_path(chat_id, msg_id, &target_path).await?;
                                 info!("Delete: {}", file_path.display());
+                                unpin_msg(&bot, chat_id, msg_id).await?;
                             }
                             _ => {}
                         }
@@ -231,8 +231,7 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         if matches!(emoji.as_str(), "👍" | "❤") {
                             let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                             fs::rename(file_path, &target_path).await?;
-                            db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                                .await?;
+                            db.update_path(chat_id, msg_id, &target_path).await?;
                             info!("Unfav: {}", target_path);
                         }
                     }
@@ -288,27 +287,27 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         })
                         .sum();
 
+                    let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                     if score >= ctx.fav_score_limit {
                         let target_path = format!("{}/{}", ctx.fav_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
-                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                            .await?;
+                        db.update_path(chat_id, msg_id, &target_path).await?;
                         info!("Fav: {}", target_path);
+                        pin_msg(&bot, chat_id, msg_id).await?;
                     } else if score < ctx.delete_score_limit {
                         let target_path = format!("{}/{}", ctx.trash_dir.display(), file_name);
-                        bot.delete_message(reaction.chat.id, reaction.message_id)
-                            .await?;
+                        bot.delete_message(chat_id, msg_id).await?;
                         info!("Deleted disliked message");
                         fs::rename(&file_path, &target_path).await?;
-                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                            .await?;
+                        db.update_path(chat_id, msg_id, &target_path).await?;
                         info!("Delete: {}", file_path.display());
+                        unpin_msg(&bot, chat_id, msg_id).await?;
                     } else {
                         let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
-                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
-                            .await?;
+                        db.update_path(chat_id, msg_id, &target_path).await?;
                         info!("Unfav: {}", target_path);
+                        unpin_msg(&bot, chat_id, msg_id).await?;
                     }
                 }
             }
@@ -547,5 +546,19 @@ async fn handle_channel_file(
         emoji: "👌".to_string(),
     }]);
     req.await?;
+    Ok(())
+}
+
+async fn pin_msg(bot: &Bot, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
+    bot.pin_chat_message(chat_id, msg_id).await?;
+    info!("Pinned message: {}", msg_id.0);
+    Ok(())
+}
+
+async fn unpin_msg(bot: &Bot, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
+    let mut unpin = bot.unpin_chat_message(chat_id);
+    unpin.message_id = Some(msg_id);
+    unpin.await?;
+    info!("Unpinned message: {}", msg_id.0);
     Ok(())
 }
