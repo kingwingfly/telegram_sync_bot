@@ -41,6 +41,7 @@ fn init() -> Result<()> {
     pretty_env_logger::env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .filter_module("hyper", log::LevelFilter::Info)
+        .filter_module("sqlx", log::LevelFilter::Info)
         .init();
     dotenv::dotenv().ok();
     info!(
@@ -83,7 +84,7 @@ impl Cli {
                     args.container_manager
                 },
                 container_id: args.container_id,
-                bypass_pwd: RwLock::new(gen_pwd()),
+                bypasskey: RwLock::new(gen_pwd()),
                 bypass_users: {
                     let mut allow_users = HashSet::new();
                     for id in std::env::var("BYPASS_USERS")

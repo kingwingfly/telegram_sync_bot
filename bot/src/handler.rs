@@ -38,8 +38,8 @@ enum Command {
     State,
     #[command(description = "Switch between paused and working state.")]
     Switch,
-    #[command(description = "Print current bypass password in the server side.")]
-    BypassPwd,
+    #[command(description = "Print current bypass key in the server side.")]
+    BypassKey,
 }
 
 type MyDialogue = Dialogue<(), InMemStorage<()>>;
@@ -67,8 +67,8 @@ fn cmd_handler() -> UpdateHandler<anyhow::Error> {
                     .await?;
                 Ok(())
             }),
-        ).branch(case![Command::BypassPwd].endpoint(async |ctx: Context| {
-            info!("Bypass_pwd: {}", ctx.bypass_pwd.read().unwrap());
+        ).branch(case![Command::BypassKey].endpoint(async |ctx: Context| {
+            info!("BypassKey: {}", ctx.bypasskey.read().unwrap());
             Ok(())
         }))
         .branch(
@@ -91,11 +91,11 @@ fn cmd_handler() -> UpdateHandler<anyhow::Error> {
                                     ..
                                 }),
                             ..
-                        } if text == format!("/switch {}", ctx.bypass_pwd.read().unwrap()) => {
+                        } if text == format!("/switch {}", ctx.bypasskey.read().unwrap()) => {
                             // renew bypass_pwd
                             let new = gen_pwd();
-                            info!("New bypass_pwd: {}", new);
-                            *ctx.bypass_pwd.write().unwrap() = new;
+                            info!("New bypasskey: {}", new);
+                            *ctx.bypasskey.write().unwrap() = new;
                         }
                         _ => {
                             bot.send_message(
@@ -208,12 +208,8 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                 let target_path =
                                     format!("{}/{}", ctx.fav_dir.display(), file_name);
                                 fs::rename(file_path, &target_path).await?;
-                                db.update_mp_pair(
-                                    reaction.chat.id,
-                                    reaction.message_id,
-                                    &target_path,
-                                )
-                                .await?;
+                                db.update_path(reaction.chat.id, reaction.message_id, &target_path)
+                                    .await?;
                                 info!("Fav: {}", target_path);
                             }
                             "👎" => {
@@ -221,13 +217,10 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                     format!("{}/{}", ctx.trash_dir.display(), file_name);
                                 bot.delete_message(reaction.chat.id, reaction.message_id)
                                     .await?;
+                                info!("Deleted disliked message");
                                 fs::rename(&file_path, &target_path).await?;
-                                db.update_mp_pair(
-                                    reaction.chat.id,
-                                    reaction.message_id,
-                                    &target_path,
-                                )
-                                .await?;
+                                db.update_path(reaction.chat.id, reaction.message_id, &target_path)
+                                    .await?;
                                 info!("Delete: {}", file_path.display());
                             }
                             _ => {}
@@ -238,7 +231,7 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         if matches!(emoji.as_str(), "👍" | "❤") {
                             let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                             fs::rename(file_path, &target_path).await?;
-                            db.update_mp_pair(reaction.chat.id, reaction.message_id, &target_path)
+                            db.update_path(reaction.chat.id, reaction.message_id, &target_path)
                                 .await?;
                             info!("Unfav: {}", target_path);
                         }
@@ -298,21 +291,22 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                     if score >= ctx.fav_score_limit {
                         let target_path = format!("{}/{}", ctx.fav_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
-                        db.update_mp_pair(reaction.chat.id, reaction.message_id, &target_path)
+                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
                             .await?;
                         info!("Fav: {}", target_path);
                     } else if score < ctx.delete_score_limit {
                         let target_path = format!("{}/{}", ctx.trash_dir.display(), file_name);
-                        db.update_mp_pair(reaction.chat.id, reaction.message_id, &target_path)
-                            .await?;
                         bot.delete_message(reaction.chat.id, reaction.message_id)
                             .await?;
-                        fs::rename(&file_path, target_path).await?;
+                        info!("Deleted disliked message");
+                        fs::rename(&file_path, &target_path).await?;
+                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
+                            .await?;
                         info!("Delete: {}", file_path.display());
                     } else {
                         let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
-                        db.update_mp_pair(reaction.chat.id, reaction.message_id, &target_path)
+                        db.update_path(reaction.chat.id, reaction.message_id, &target_path)
                             .await?;
                         info!("Unfav: {}", target_path);
                     }
@@ -423,10 +417,12 @@ where
 {
     info!("Handling file: {}", file_id.as_ref());
     let target_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
-    if let Some((old_id, old_path)) = db.get_mp_pair(chat_id, file_id.as_ref()).await? {
+    if let Some(old_path) = db.get_path_by_file_id(file_id.as_ref()).await? {
         fs::rename(&old_path, &target_path).await?;
-        info!("Moved: {} -> {}", old_path, target_path);
-        bot.delete_message(chat_id, old_id).await?;
+        if let Some(old_msg_id) = db.get_msg_id(chat_id, file_id.as_ref()).await? {
+            bot.delete_message(chat_id, old_msg_id).await.ok(); // old_id may have been deleted
+            info!("Deleted old message");
+        }
         let reply_id = reply(
             &bot,
             chat_id,
@@ -434,7 +430,11 @@ where
         )
         .await?
         .id;
-        db.update_mp_pair(chat_id, reply_id, &target_path).await?;
+        db.insert_or_replace_files(chat_id, file_id.as_ref(), reply_id)
+            .await?;
+        db.insert_or_replace_path(file_id.as_ref(), &target_path)
+            .await?;
+        info!("Moved: {} -> {}", old_path, target_path);
     } else {
         info!("Downloading: {}", file_id.as_ref());
         let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
@@ -471,7 +471,9 @@ where
         )
         .await?
         .id;
-        db.insert_mp_pair(chat_id, file_id.as_ref(), reply_id, &target_path)
+        db.insert_or_replace_files(chat_id, file_id.as_ref(), reply_id)
+            .await?;
+        db.insert_or_replace_path(file_id.as_ref(), &target_path)
             .await?;
         info!("Saved: {}", save_path);
     }
@@ -494,11 +496,17 @@ async fn handle_channel_file(
     }]);
     req.await?;
     let target_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
-    if let Some((old_id, old_path)) = db.get_mp_pair(chat_id, file_id.as_ref()).await? {
+    if let Some(old_path) = db.get_path_by_file_id(file_id.as_ref()).await? {
         fs::rename(&old_path, &target_path).await?;
+        if let Some(old_id) = db.get_msg_id(chat_id, file_id.as_ref()).await? {
+            bot.delete_message(chat_id, old_id).await.ok(); // old_id may have been deleted
+            info!("Deleted old message");
+        }
+        db.insert_or_replace_files(chat_id, file_id.as_ref(), message_id)
+            .await?;
+        db.insert_or_replace_path(file_id.as_ref(), &target_path)
+            .await?;
         info!("Moved: {} -> {}", old_path, target_path);
-        bot.delete_message(chat_id, old_id).await?;
-        db.update_mp_pair(chat_id, message_id, &target_path).await?;
     } else {
         info!("Downloading: {}", file_id.as_ref());
         let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
@@ -528,7 +536,9 @@ async fn handle_channel_file(
                 }
             },
         }
-        db.insert_mp_pair(chat_id, file_id.as_ref(), message_id, &target_path)
+        db.insert_or_replace_files(chat_id, file_id.as_ref(), message_id)
+            .await?;
+        db.insert_or_replace_path(file_id.as_ref(), &target_path)
             .await?;
         info!("Saved: {}", save_path);
     }

@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use log::info;
 use sqlx::{Row, SqlitePool, query, sqlite::SqliteConnectOptions};
 use std::ops::Deref;
@@ -6,16 +6,19 @@ use teloxide::types::{ChatId, MessageId};
 
 const CREATE_TABLES: &str = r#"
 CREATE TABLE IF NOT EXISTS files (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-file_id TEXT NOT NULL,
-chat_id BIGINT NOT NULL,
-msg_id INTEGER NOT NULL,
-path TEXT NOT NULL,
-UNIQUE(chat_id, file_id),
-UNIQUE(chat_id, msg_id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id BIGINT NOT NULL,
+    file_id TEXT NOT NULL,
+    msg_id INTEGER NOT NULL,
+    UNIQUE(chat_id, file_id),
+    UNIQUE(chat_id, msg_id)
+);
+CREATE TABLE IF NOT EXISTS paths (
+    file_id TEXT PRIMARY KEY,
+    path TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS chats (
-chat_id BIGINT PRIMARY KEY
+    chat_id BIGINT PRIMARY KEY
 );"#;
 
 #[derive(Debug, Clone)]
@@ -79,64 +82,84 @@ impl MyStorage {
         Ok(!chat_state)
     }
 
-    /// get msg_id:path in chat_id
-    pub async fn get_mp_pair(
-        &self,
-        chat_id: ChatId,
-        file_id: &str,
-    ) -> Result<Option<(MessageId, String)>> {
-        query("SELECT msg_id, path FROM files WHERE chat_id = ? AND file_id = ?")
+    /// get file_id for msg_id in chat_id
+    pub async fn get_file_id(&self, chat_id: ChatId, msg_id: MessageId) -> Result<Option<String>> {
+        query("SELECT file_id FROM files WHERE chat_id = ? AND msg_id = ?")
+            .bind(chat_id.0)
+            .bind(msg_id.0)
+            .fetch_optional(&self.db)
+            .await
+            .context("Failed to get file_id")
+            .map(|row| row.map(|row| row.get("file_id")))
+    }
+
+    /// get msg_id for file_id in chat_id
+    pub async fn get_msg_id(&self, chat_id: ChatId, file_id: &str) -> Result<Option<MessageId>> {
+        query("SELECT msg_id FROM files WHERE chat_id = ? AND file_id = ?")
             .bind(chat_id.0)
             .bind(file_id)
             .fetch_optional(&self.db)
             .await
-            .context("Failed to get mp pair")
-            .map(|row| row.map(|row| (MessageId(row.get(0)), row.get(1))))
+            .context("Failed to get msg_id")
+            .map(|row| row.map(|row| MessageId(row.get("msg_id"))))
     }
 
-    /// get current path of chat_id/msg_id
+    /// get path for file_id of chat_id and msg_id
     pub async fn get_path(&self, chat_id: ChatId, msg_id: MessageId) -> Result<Option<String>> {
-        query("SELECT path FROM files WHERE chat_id = ? AND msg_id = ?")
-            .bind(chat_id.0)
-            .bind(msg_id.0)
+        let Some(file_id) = self.get_file_id(chat_id, msg_id).await? else {
+            return Ok(None);
+        };
+        query("SELECT path FROM paths WHERE file_id = ?")
+            .bind(file_id)
             .fetch_optional(&self.db)
             .await
-            .context("Failed to get file path")
-            .map(|row| row.map(|row| row.get(0)))
+            .context("Failed to get path")
+            .map(|row| row.map(|row| row.get("path")))
     }
 
-    pub async fn insert_mp_pair(
+    /// get path for file_id
+    pub async fn get_path_by_file_id(&self, file_id: &str) -> Result<Option<String>> {
+        query("SELECT path FROM paths WHERE file_id = ?")
+            .bind(file_id)
+            .fetch_optional(&self.db)
+            .await
+            .context("Failed to get path")
+            .map(|row| row.map(|row| row.get("path")))
+    }
+
+    /// update path for file_id of chat_id and msg_id
+    pub async fn update_path(&self, chat_id: ChatId, msg_id: MessageId, path: &str) -> Result<()> {
+        let Some(file_id) = self.get_file_id(chat_id, msg_id).await? else {
+            return Err(anyhow!("Failed to update path"));
+        };
+        self.insert_or_replace_path(&file_id, path).await
+    }
+
+    /// insert msg_id for file_id in chat_id
+    pub async fn insert_or_replace_files(
         &self,
         chat_id: ChatId,
         file_id: &str,
         msg_id: MessageId,
-        path: &str,
     ) -> Result<()> {
-        query("INSERT INTO files (file_id, chat_id, msg_id, path) VALUES (?, ?, ?, ?)")
-            .bind(file_id)
+        query("INSERT OR REPLACE INTO files (chat_id, file_id, msg_id) VALUES (?, ?, ?)")
             .bind(chat_id.0)
+            .bind(file_id)
             .bind(msg_id.0)
-            .bind(path)
             .execute(&self.db)
             .await
-            .context("Failed to insert mp pair")
-            .map(|_| ())
+            .context("Failed to insert file")?;
+        Ok(())
     }
 
-    /// update msg_id:path in chat_id
-    pub async fn update_mp_pair(
-        &self,
-        chat_id: ChatId,
-        msg_id: MessageId,
-        path: &str,
-    ) -> Result<()> {
-        query("UPDATE files SET path = ?, msg_id = ? WHERE chat_id = ?")
+    /// insert or replace path for file_id
+    pub async fn insert_or_replace_path(&self, file_id: &str, path: &str) -> Result<()> {
+        query("INSERT OR REPLACE INTO paths (file_id, path) VALUES (?, ?)")
+            .bind(file_id)
             .bind(path)
-            .bind(msg_id.0)
-            .bind(chat_id.0)
             .execute(&self.db)
             .await
-            .context("Failed to update mp pair")
-            .map(|_| ())
+            .context("Failed to insert or replace path")?;
+        Ok(())
     }
 }

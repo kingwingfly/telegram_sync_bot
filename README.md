@@ -16,8 +16,8 @@ The owner can then react to the returned messages with emoji to manage the file:
 
 ## file sent to bot managed channel
 
-Initially, the bot owner send `/unpause <bypass_pwd>` to the bot to unpause the bot
-(the `<bypass_pwd>` can be seen in the log, and send `/bypasspwd` to reprint the pwd in the log).
+Initially, the bot owner send `/unpause <bypasskey>` to the bot to unpause the bot
+(the `<bypasskey>` can be seen in the log, and send `/bypasskey` to reprint the pwd in the log).
 
 The bot will set "🫡" reaction to the file message to indicate the file is downloading.
 
