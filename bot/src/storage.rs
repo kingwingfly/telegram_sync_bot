@@ -4,6 +4,20 @@ use sqlx::{Row, SqlitePool, query, sqlite::SqliteConnectOptions};
 use std::ops::Deref;
 use teloxide::types::{ChatId, MessageId};
 
+const CREATE_TABLES: &str = r#"
+CREATE TABLE IF NOT EXISTS files (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+file_id TEXT NOT NULL,
+chat_id BIGINT NOT NULL,
+msg_id INTEGER NOT NULL,
+path TEXT NOT NULL,
+UNIQUE(chat_id, file_id),
+UNIQUE(chat_id, msg_id)
+);
+CREATE TABLE IF NOT EXISTS chats (
+chat_id BIGINT PRIMARY KEY
+);"#;
+
 #[derive(Debug, Clone)]
 pub struct MyStorage {
     db: SqlitePool,
@@ -27,29 +41,18 @@ impl MyStorage {
         )
         .await
         .unwrap();
-        query(
-            r#"
-CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_id TEXT,
-    chat_id BIGINT,
-    msg_id INTEGER,
-    path TEXT,
-    UNIQUE(chat_id, file_id),
-    UNIQUE(chat_id, msg_id)
-);
-CREATE TABLE IF NOT EXISTS chats (
-    chat_id BIGINT PRIMARY KEY
-);"#,
-        )
-        .execute(&db)
-        .await
-        .unwrap();
+        let mut tx = db.begin().await.unwrap();
+        sqlx::query(CREATE_TABLES)
+            .execute(&mut *tx)
+            .await
+            .context("Failed to create tables")
+            .unwrap();
+        tx.commit().await.unwrap();
         Self { db }
     }
 
     pub async fn get_chat_state(&self, chat_id: ChatId) -> bool {
-        query("SELECT chat_id FROM chats WHERE chat_id = ?")
+        query("SELECT 1 FROM chats WHERE chat_id = ?")
             .bind(chat_id.0)
             .fetch_one(&self.db)
             .await
