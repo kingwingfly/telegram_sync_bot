@@ -25,10 +25,10 @@ pub struct Cli {
     /// The container id or name if deploying server in a container.
     #[arg(short = 'i', long)]
     container_id: Option<String>,
-    /// Score limit to favorite a file, > 0 (channel only).
+    /// If score >= limit, fav a file, limit >= 0 (channel only).
     #[arg(short, long, default_value = "10")]
     fav_score_limit: i32,
-    /// Score limit to delete a file, < 0 (channel only, e.g `-d-10`).
+    /// If score < limit, delete a file, limit <= 0 (channel only, e.g `-d-10`).
     #[arg(short, long, default_value = "-10")]
     delete_score_limit: i32,
 }

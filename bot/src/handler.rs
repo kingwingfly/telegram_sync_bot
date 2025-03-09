@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     bot::State,
     context::Context,
@@ -197,12 +199,9 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
         async |bot: Bot, update: Update, ctx: Context| {
             if let UpdateKind::MessageReaction(reaction) = update.kind {
                 let msg_id = reaction.message_id.0.to_ne_bytes();
-                let msgs = ctx
-                    .db
-                    .open_tree(reaction.chat.id.0.to_ne_bytes())
-                    .context("Failed to open msg tree")?;
-                if let Ok(Some(file_path)) = msgs.get(msg_id) {
-                    let file_path = std::path::Path::new(std::str::from_utf8(&file_path)?);
+                let chat = ctx.db.open_tree(reaction.chat.id.0.to_ne_bytes())?;
+                if let Ok(Some(file_path)) = chat.get(msg_id) {
+                    let file_path = Path::new(std::str::from_utf8(&file_path)?);
                     let file_name = file_path
                         .file_name()
                         .and_then(|file| file.to_str())
@@ -214,14 +213,14 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                 let target_path =
                                     format!("{}/{}", ctx.fav_dir.display(), file_name);
                                 fs::rename(file_path, &target_path).await?;
-                                msgs.insert(msg_id, target_path.as_bytes())
+                                chat.insert(msg_id, target_path.as_bytes())
                                     .context("Failed to update msg and file path")?;
                                 info!("Fav: {}", target_path);
                             }
                             "👎" => {
                                 let target_path =
                                     format!("{}/{}", ctx.trash_dir.display(), file_name);
-                                msgs.remove(msg_id).context("Failed to remove msg_id")?;
+                                chat.remove(msg_id).context("Failed to remove msg_id")?;
                                 bot.delete_message(reaction.chat.id, reaction.message_id)
                                     .await?;
                                 fs::rename(&file_path, target_path).await?;
@@ -235,13 +234,13 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         if matches!(emoji.as_str(), "👍" | "❤") {
                             let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                             fs::rename(file_path, &target_path).await?;
-                            msgs.insert(msg_id, target_path.as_bytes())
+                            chat.insert(msg_id, target_path.as_bytes())
                                 .context("Failed to update msg and file path")?;
                             info!("Unfav: {}", target_path);
                         }
                     }
                 } else {
-                    debug!("Won't react to user message");
+                    debug!("Unable to handle react to user message");
                 }
             }
             Ok(())
@@ -254,12 +253,9 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
         async |bot: Bot, update: Update, ctx: Context| {
             if let UpdateKind::MessageReactionCount(reaction) = update.kind {
                 let msg_id = reaction.message_id.0.to_ne_bytes();
-                let msgs = ctx
-                    .db
-                    .open_tree(reaction.chat.id.0.to_ne_bytes())
-                    .context("Failed to open msg tree")?;
-                if let Ok(Some(file_path)) = msgs.get(msg_id) {
-                    let file_path = std::path::Path::new(std::str::from_utf8(&file_path)?);
+                let chat = ctx.db.open_tree(reaction.chat.id.0.to_ne_bytes())?;
+                if let Ok(Some(file_path)) = chat.get(msg_id) {
+                    let file_path = Path::new(std::str::from_utf8(&file_path)?);
                     let file_name = file_path
                         .file_name()
                         .and_then(|file| file.to_str())
@@ -295,12 +291,12 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                     if score >= ctx.fav_score_limit {
                         let target_path = format!("{}/{}", ctx.fav_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
-                        msgs.insert(msg_id, target_path.as_bytes())
+                        chat.insert(msg_id, target_path.as_bytes())
                             .context("Failed to update msg and file path")?;
                         info!("Fav: {}", target_path);
                     } else if score < ctx.delete_score_limit {
                         let target_path = format!("{}/{}", ctx.trash_dir.display(), file_name);
-                        msgs.remove(msg_id)
+                        chat.remove(msg_id)
                             .context("Failed to update msg and file path")?;
                         bot.delete_message(reaction.chat.id, reaction.message_id)
                             .await?;
@@ -308,10 +304,12 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         info!("Delete: {}", file_path.display());
                     } else {
                         let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
-                        fs::rename(file_path, &target_path).await?;
-                        msgs.insert(msg_id, target_path.as_bytes())
-                            .context("Failed to update msg and file path")?;
-                        info!("Unfav: {}", target_path);
+                        if !Path::new(&target_path).exists() {
+                            fs::rename(file_path, &target_path).await?;
+                            chat.insert(msg_id, target_path.as_bytes())
+                                .context("Failed to update msg and file path")?;
+                            info!("Unfav: {}", target_path);
+                        }
                     }
                 }
             }
@@ -400,13 +398,13 @@ async fn save_file(
     file_name: &impl AsRef<str>,
 ) -> Result<String> {
     info!("Saving: {}", file_id.as_ref());
+    let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
     let server_path = loop {
         if let Ok(f) = bot.get_file(file_id.as_ref()).send().await {
             break f.path;
         }
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     };
-    let save_path = format!("{}/{}", ctx.output_dir.display(), file_name.as_ref());
     match ctx.local_server {
         false => {
             let mut file = fs::File::create(&save_path).await?;
@@ -457,12 +455,8 @@ where
     .id
     .0
     .to_ne_bytes();
-    let msgs = ctx
-        .db
-        .open_tree(chat_id.0.to_ne_bytes())
-        .context("Failed to open msg tree")?;
-    msgs.insert(reply_id, save_path.as_bytes())
-        .context("Failed to save msg_id")?;
+    let msgs = ctx.db.open_tree(chat_id.0.to_ne_bytes())?;
+    msgs.insert(reply_id, save_path.as_bytes())?;
     Ok(())
 }
 
@@ -485,11 +479,7 @@ async fn handle_channel_file(
         emoji: "👌".to_string(),
     }]);
     req.await?;
-    let msgs = ctx
-        .db
-        .open_tree(chat_id.0.to_ne_bytes())
-        .context("Failed to open msg tree")?;
-    msgs.insert(message_id.0.to_ne_bytes(), save_path.as_bytes())
-        .context("Failed to save msg_id")?;
+    let msgs = ctx.db.open_tree(chat_id.0.to_ne_bytes())?;
+    msgs.insert(message_id.0.to_ne_bytes(), save_path.as_bytes())?;
     Ok(())
 }

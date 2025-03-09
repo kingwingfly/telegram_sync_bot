@@ -37,6 +37,8 @@ If the score >= fav_score_limit, the bot will move the file to favorite director
 
 If the score < delete_score_limit, the bot will move the file to trash and delete from channel.
 
+Note: it takes minites to get ReactionCountUpdate, so the bot will not handle reaction immediately.
+
 # Deploy
 
 You could create a `.env` file with the following content:
@@ -71,7 +73,7 @@ Options:
   -f, --fav-score-limit <FAV_SCORE_LIMIT>
           Score limit to favorite a file, > 0 (channel only) [default: 10]
   -d, --delete-score-limit <DELETE_SCORE_LIMIT>
-          Score limit to delete a file, < 0 (channel only, e.g `-d-10`) [default: -10]
+          Score limit to delete a file, <= 0 (channel only, e.g `-d-10`) [default: -10]
   -h, --help
           Print help
   -V, --version
