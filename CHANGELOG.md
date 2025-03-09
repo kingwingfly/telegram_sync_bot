@@ -12,6 +12,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 ## [0.3.1] - 2025-03-10
 
 - fix bug: the bot will check the path exists before operate
+- fix bug: delete the message out of control
 - log more detailed Context
 - pin while fav, unpin while unfav or delete
 

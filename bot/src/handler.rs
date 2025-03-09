@@ -195,6 +195,7 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                 return Ok(());
             }
             if let UpdateKind::MessageReaction(reaction) = update.kind {
+                let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                 if let Some(file_path) = db.get_path(reaction.chat.id, reaction.message_id).await? {
                     let file_path = Path::new(&file_path);
                     let file_name = file_path
@@ -202,7 +203,6 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         .and_then(|file| file.to_str())
                         .context("Failed to read filename from db")?;
 
-                    let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                     if let Some(ReactionType::Emoji { emoji }) = reaction.new_reaction.first() {
                         match emoji.as_str() {
                             "👍" | "❤" => {
@@ -236,7 +236,9 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         }
                     }
                 } else {
-                    debug!("Unable to handle react to user message");
+                    debug!("Unable to handle react to user message maybe");
+                    bot.delete_message(chat_id, msg_id).await?;
+                    info!("Deleted out of control message");
                 }
             }
             Ok(())
@@ -253,6 +255,7 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                 return Ok(());
             }
             if let UpdateKind::MessageReactionCount(reaction) = update.kind {
+                let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                 if let Some(file_path) = db.get_path(reaction.chat.id, reaction.message_id).await? {
                     let file_path = Path::new(&file_path);
                     let file_name = file_path
@@ -287,7 +290,6 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         })
                         .sum();
 
-                    let (chat_id, msg_id) = (reaction.chat.id, reaction.message_id);
                     if score >= ctx.fav_score_limit {
                         let target_path = format!("{}/{}", ctx.fav_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
@@ -309,6 +311,9 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         info!("Unfav: {}", target_path);
                         unpin_msg(&bot, chat_id, msg_id).await?;
                     }
+                } else {
+                    bot.delete_message(chat_id, msg_id).await?;
+                    info!("Deleted out of control message");
                 }
             }
             Ok(())
