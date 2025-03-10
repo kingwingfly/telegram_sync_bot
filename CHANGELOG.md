@@ -13,6 +13,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 
 - command `/trogglesync` to stop saving new files and only works as a reaction handler
 - sql improvements
+- fix bug: do not need unpin deleted message
 
 ## [0.3.1] - 2025-03-10
 

@@ -306,7 +306,7 @@ fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         fs::rename(&file_path, &target_path).await?;
                         db.update_path(chat_id, msg_id, &target_path).await?;
                         info!("Delete: {}", file_path.display());
-                        unpin_msg(&bot, chat_id, msg_id).await?;
+                        // do not need unpin deleted message
                     } else {
                         let target_path = format!("{}/{}", ctx.output_dir.display(), file_name);
                         fs::rename(file_path, &target_path).await?;
