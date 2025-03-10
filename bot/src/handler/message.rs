@@ -58,8 +58,7 @@ pub fn msg_handler() -> UpdateHandler<anyhow::Error> {
                     let handle = storage.add(file_id, file_name).await?;
                     tokio::spawn(async move {
                         set_emoji(&bot, chat_id, msg_id, "🫡").await?;
-                        handle.cancelled().await;
-                        let emoji = match handle.get_state() {
+                        let emoji = match handle.result().await {
                             TransportState::Completed => "👌",
                             TransportState::Cancelled => "😨",
                             TransportState::Failed => "😭",

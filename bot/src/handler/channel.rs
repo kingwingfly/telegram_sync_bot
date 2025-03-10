@@ -48,8 +48,7 @@ pub fn channel_post_handler() -> UpdateHandler<anyhow::Error> {
                     } {
                         let handle = storage.add(file_id, file_name).await?;
                         tokio::spawn(async move {
-                            handle.cancelled().await;
-                            let emoji = match handle.get_state() {
+                            let emoji = match handle.result().await {
                                 TransportState::Completed => "👌",
                                 TransportState::Cancelled => "😨",
                                 TransportState::Failed => "😭",

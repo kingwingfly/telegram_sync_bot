@@ -39,6 +39,11 @@ impl TransportHandle {
         self.cancel.cancel();
     }
 
+    pub async fn result(&self) -> TransportState {
+        self.cancel.cancelled().await;
+        self.get_state()
+    }
+
     pub(super) fn is_cancelled(&self) -> bool {
         self.cancel.is_cancelled()
     }
@@ -132,7 +137,7 @@ impl Downloader {
                                                 Ok(_) => handle.set_state(TransportState::Completed),
                                                 Err(_) => handle.set_state(TransportState::Failed),
                                             }
-                                            handle.cancel(); // when downloading, wait cancel.cancelled() avoiding loop checking
+                                            handle.cancel(); // when downloading, await cancel.cancelled() avoiding loop checking
                                         },
                                         _ = handle.cancelled() => {
                                             handle.set_state(TransportState::Cancelled);
