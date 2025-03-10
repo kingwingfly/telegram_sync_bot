@@ -1,11 +1,6 @@
 [workspace]
-members = ["bot"]
+members = ["bot", "entity", "migration"]
 resolver = "2"
-
-[workspace.package]
-
-
-[workspace.dependencies]
 
 
 [profile.release]

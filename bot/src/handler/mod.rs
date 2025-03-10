@@ -2,6 +2,7 @@ mod channel;
 mod command;
 mod message;
 mod reaction;
+mod utils;
 
 use channel::channel_post_handler;
 use message::msg_handler;

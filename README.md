@@ -43,7 +43,7 @@ Note: it takes minites to get ReactionCountUpdate, so the bot will not handle re
 
 You could create a `.env` file with the following content:
 
-```ini
+```
 # Get from botfather
 TELOXIDE_TOKEN=xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Your telegram id found in your profile
@@ -210,3 +210,23 @@ WantedBy=default.target
 Search `podman quadlet` for using podman kube play as systemd service.
 
 Note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.
+
+# Development
+
+**Rust 2024 is essencial**
+
+Set `DATABASE_URL` in `.env` to use the database.
+
+```
+DATABASE_URL=sqlite://output/data.db
+```
+
+Then you can run the following command to create the database and generate the entity:
+```
+
+```sh
+cargo install sea-orm-cli
+mkdir output
+sea-orm-cli migrate refresh
+sea-orm-cli generate entity -l --expanded-format -o entity/src
+```

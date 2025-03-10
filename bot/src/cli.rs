@@ -113,16 +113,16 @@ impl Cli {
             }),
         };
         info!("Context: {}", context);
-        let storage = MyStorage::new(format!("{}/data.db", context.output_dir.display())).await;
-        let bot = Bot::from_env();
+        let mut bot = Bot::from_env();
         if let Some(url) = args.local_server_url {
-            Ok((
-                bot.set_api_url(url.parse().context("Failed to parse local server url")?),
-                context,
-                storage,
-            ))
-        } else {
-            Ok((bot, context, storage))
+            bot = bot.set_api_url(url.parse().context("Failed to parse local server url")?);
         }
+        let storage = MyStorage::new(
+            format!("sqlite://{}/data.db?mode=rwc", context.output_dir.display()),
+            bot.clone(),
+            context.clone(),
+        )
+        .await?;
+        Ok((bot, context, storage))
     }
 }

@@ -1,15 +1,20 @@
 use crate::{cli::Cli, handler::handler};
 use anyhow::Result;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
+use tokio::task::JoinHandle;
 
 pub async fn run() -> Result<()> {
     let (bot, context, storage) = Cli::init().await?;
-    Dispatcher::builder(bot, handler())
+    let mut dispatcher = Dispatcher::builder(bot, handler())
         .dependencies(dptree::deps![InMemStorage::<()>::new(), context, storage])
-        .enable_ctrlc_handler()
-        .build()
-        .dispatch()
-        .await;
-
+        .build();
+    let shutdown = dispatcher.shutdown_token();
+    let listener: JoinHandle<Result<()>> = tokio::spawn(async move {
+        tokio::signal::ctrl_c().await?;
+        shutdown.shutdown()?.await;
+        Ok(())
+    });
+    dispatcher.dispatch().await;
+    listener.await??;
     Ok(())
 }

@@ -1,3 +1,8 @@
 mod db;
+mod state;
+mod storage_impl;
+mod transport;
 
-pub use db::MyStorage;
+pub use state::{ChatState, FileState, TransportState};
+pub use storage_impl::MyStorage;
+pub use transport::{FileId, FileName};

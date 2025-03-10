@@ -24,10 +24,8 @@ enum Command {
     Help,
     #[command(description = "Dhow the current state.")]
     State,
-    #[command(description = "Switch between paused and working state.")]
-    Switch,
-    #[command(description = "Toggle sync new files.")]
-    TroggleSync,
+    #[command(description = "Switch between paused, active, partially active state.")]
+    Troggle,
     #[command(description = "Print current bypass key in the server side.")]
     BypassKey,
 }
@@ -57,39 +55,19 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
         }))
         .branch(
             case![Command::State].endpoint(async |bot: Bot, msg: Message, db: MyStorage| {
-                let working = db.get_chat_state(msg.chat.id).await;
-                let syncing = db.get_syncing_state(msg.chat.id).await;
-                bot.send_message(
-                    msg.chat.id,
-                    format!("working: {}; syncing: {}", working, syncing),
-                )
-                .await?;
+                let state = db.get_chat_state(msg.chat.id).await?;
+                bot.send_message(msg.chat.id, format!("Current State: {}", state))
+                    .await?;
                 Ok(())
             }),
         )
-        .branch(case![Command::Switch].endpoint(
+        .branch(case![Command::Troggle].endpoint(
             async |bot: Bot, dialogue: MyDialogue, msg: Message, ctx: Context, db: MyStorage| {
                 if !auth(&bot, &dialogue, &msg, &ctx).await? {
                     return Ok(());
                 }
-                let working = db.switch_chat_state(msg.chat.id).await?;
-                bot.send_message(msg.chat.id, format!("Working: {}", working))
-                    .await?;
-                Ok(())
-            },
-        ))
-        .branch(case![Command::TroggleSync].endpoint(
-            async |bot: Bot, dialogue: MyDialogue, msg: Message, ctx: Context, db: MyStorage| {
-                if !db.get_chat_state(msg.chat.id).await {
-                    bot.send_message(msg.chat.id, "Paused").await?;
-                    dialogue.exit().await?;
-                    return Ok(());
-                }
-                if !auth(&bot, &dialogue, &msg, &ctx).await? {
-                    return Ok(());
-                }
-                let syncing = db.troggle_syncing(msg.chat.id).await?;
-                bot.send_message(msg.chat.id, format!("Syncing: {}", syncing))
+                let state = db.troggle_chat_state(msg.chat.id).await?;
+                bot.send_message(msg.chat.id, format!("Current State: {}", state))
                     .await?;
                 Ok(())
             },
