@@ -23,8 +23,8 @@ impl MigrationTrait for Migration {
                     .name("file_id_fk")
                     .from(FileHandle::Table, FileHandle::FileID)
                     .to(FileState::Table, FileState::FileID)
-                    .on_delete(ForeignKeyAction::Cascade)
-                    .on_update(ForeignKeyAction::Cascade),
+                    .on_delete(ForeignKeyAction::Restrict) // forbid delete file_id in file_state if it is in file_handle
+                    .on_update(ForeignKeyAction::NoAction), // file_id in file_state hardly change
             )
             .to_owned();
         info!(

@@ -9,6 +9,14 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.4.0] - 2025-03-11
+
+- move from `sqlx` to `sea-orm`
+- improve with a download manager
+- play with `CancellationToken`, better code structure
+- better file-state and transport-state management
+- improve with foreign key
+
 ## [0.3.2] - 2025-03-10
 
 - command `/trogglesync` to stop saving new files and only works as a reaction handler
