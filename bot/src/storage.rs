@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS paths (
     path TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS chats (
-    chat_id BIGINT PRIMARY KEY
+    chat_id BIGINT PRIMARY KEY,
+    syncing BOOLEAN DEFAULT TRUE
 );"#;
 
 #[derive(Debug, Clone)]
@@ -80,6 +81,28 @@ impl MyStorage {
                 .context("Failed to insert chat state")?;
         }
         Ok(!chat_state)
+    }
+
+    /// get syncing state
+    pub async fn get_syncing_state(&self, chat_id: ChatId) -> bool {
+        query("SELECT syncing FROM chats WHERE chat_id = ?")
+            .bind(chat_id.0)
+            .fetch_one(&self.db)
+            .await
+            .map(|row| row.get("syncing"))
+            .context("Failed to get syncing state")
+            .unwrap_or_default()
+    }
+
+    /// troggle syncing state
+    pub async fn troggle_syncing(&self, chat_id: ChatId) -> Result<bool> {
+        let syncing = self.get_syncing_state(chat_id).await;
+        query("UPDATE chats SET syncing = NOT syncing WHERE chat_id = ?")
+            .bind(chat_id.0)
+            .execute(&self.db)
+            .await
+            .context("Failed to troggle syncing state")?;
+        Ok(!syncing)
     }
 
     /// get file_id for msg_id in chat_id

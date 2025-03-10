@@ -1,5 +1,6 @@
 use core::fmt;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{
     collections::HashSet,
     path::PathBuf,
@@ -29,6 +30,8 @@ pub struct ContextInner {
     pub output_dir: PathBuf,
     pub fav_dir: PathBuf,
     pub trash_dir: PathBuf,
+
+    pub syncing: AtomicBool,
 }
 
 impl fmt::Display for Context {
@@ -44,6 +47,7 @@ impl fmt::Display for Context {
             .field("output_dir", &self.output_dir)
             .field("fav_dir", &self.fav_dir)
             .field("trash dir", &self.trash_dir)
+            .field("syncing", &self.syncing.load(Ordering::Acquire))
             .finish()
     }
 }

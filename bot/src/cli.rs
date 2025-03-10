@@ -1,7 +1,7 @@
 use crate::{
     context::{Context, ContextInner},
     storage::MyStorage,
-    utils::gen_pwd,
+    utils::gen_key,
 };
 use anyhow::{Context as _, Result, anyhow};
 use clap::Parser;
@@ -10,7 +10,7 @@ use std::{
     collections::HashSet,
     path::PathBuf,
     process::Stdio,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, atomic::AtomicBool},
 };
 use teloxide::{Bot, types::UserId};
 
@@ -42,6 +42,7 @@ fn init() -> Result<()> {
         .filter_level(log::LevelFilter::Debug)
         .filter_module("hyper", log::LevelFilter::Info)
         .filter_module("sqlx", log::LevelFilter::Info)
+        .filter_module("reqwest", log::LevelFilter::Info)
         .init();
     dotenv::dotenv().ok();
     info!(
@@ -84,7 +85,7 @@ impl Cli {
                     args.container_manager
                 },
                 container_id: args.container_id,
-                bypasskey: RwLock::new(gen_pwd()),
+                bypasskey: RwLock::new(gen_key()),
                 bypass_users: {
                     let mut allow_users = HashSet::new();
                     for id in std::env::var("BYPASS_USERS")
@@ -108,6 +109,7 @@ impl Cli {
                 output_dir: args.output,
                 fav_score_limit: args.fav_score_limit,
                 delete_score_limit: args.delete_score_limit,
+                syncing: AtomicBool::new(true),
             }),
         };
         info!("Context: {}", context);

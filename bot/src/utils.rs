@@ -26,10 +26,14 @@ pub async fn cp_from_container(
     Ok(())
 }
 
-pub fn gen_pwd() -> String {
+pub fn gen_key() -> String {
+    #[cfg(debug_assertions)]
+    const KEY_LEN: usize = 1;
+    #[cfg(not(debug_assertions))]
+    const KEY_LEN: usize = 16;
     rand::rng()
         .sample_iter(Alphanumeric)
-        .take(16)
+        .take(KEY_LEN)
         .map(char::from)
         .collect()
 }
