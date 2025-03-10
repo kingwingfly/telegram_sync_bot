@@ -24,7 +24,7 @@ enum Command {
     Help,
     #[command(description = "Dhow the current state.")]
     State,
-    #[command(description = "Switch between paused, active, partially active state.")]
+    #[command(description = "Switch among paused, active, partially-active state.")]
     Troggle,
     #[command(description = "Print current bypass key in the server side.")]
     BypassKey,

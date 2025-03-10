@@ -16,12 +16,16 @@ The owner can then react to the returned messages with emoji to manage the file:
 
 ## file sent to bot managed channel
 
-Initially, the bot owner send `/unpause <bypasskey>` to the bot to unpause the bot
-(the `<bypasskey>` can be seen in the log, and send `/bypasskey` to reprint the pwd in the log).
+Initially, the bot owner send `/troggle <bypasskey>` to the bot to troggle among states:
+- `paused`: pause the bot
+- `active`: sync files and answer reactions
+- `partially active`: answer reactions but not sync files
+
+(the `<bypasskey>` can be seen in the log, and send `/bypasskey` to reprint the pwd in the log)
 
 The bot will set "🫡" reaction to the file message to indicate the file is downloading.
 
-Once done, the bot will set "👌".
+Once done, the bot will set "👌". ("😭" if failed, "😨" if canceled)
 
 People can react to the file with emoji, and the bot will count the score of the file.
 
@@ -33,11 +37,13 @@ People can react to the file with emoji, and the bot will count the score of the
 |👎🤯😱😢🥴🌚😐🖕😨|-1|
 |🤬🤮💩🤡💔😡|-2|
 
-If the score >= fav_score_limit, the bot will move the file to favorite directory.
+If the score >= fav_score_limit, the bot will move the file to favorite directory and pin it.
 
 If the score < delete_score_limit, the bot will move the file to trash and delete from channel.
 
-Note: it takes minites to get ReactionCountUpdate, so the bot will not handle reaction immediately.
+Otherwise, the bot will do nothing and unpin the file if necessary.
+
+Note: it takes minites to get ReactionCountUpdate, so the bot will not handle reaction from channel immediately.
 
 # Deploy
 
@@ -71,9 +77,9 @@ Options:
   -i, --container-id <CONTAINER_ID>
           The container id or name if deploying server in a container
   -f, --fav-score-limit <FAV_SCORE_LIMIT>
-          Score limit to favorite a file, > 0 (channel only) [default: 10]
+          If score >= limit, fav a file, limit >= 0 (channel only) [default: 10]
   -d, --delete-score-limit <DELETE_SCORE_LIMIT>
-          Score limit to delete a file, <= 0 (channel only, e.g `-d-10`) [default: -10]
+          If score < limit, delete a file, limit <= 0 (channel only, e.g `-d-10`) [default: -10]
   -h, --help
           Print help
   -V, --version
@@ -89,14 +95,14 @@ fav_sync_bot -o /path/to/output
 You need to apply for telegram api id and hash from [Telegram](https://core.telegram.org/api/obtaining_api_id) first.
 (If you always get `Error` during applying, try `cloudflare warp` as VPN)
 
-All methods need to run local server in container first.
+All methods below running local server in container first.
 
 (You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.
 I'll just skip this method here)
 
 Get local server image first:
 
-Prepare (Windows or MacOS only):
+Prepare (Windows and MacOS with podman only):
 ```sh
 podman machine init -v /path/to/output:/path/to/output bot_machine
 podman machine start bot_machine
@@ -104,7 +110,7 @@ podman machine start bot_machine
 
 You can use the following command to build the telegram api bot local server image:
 ```sh
-cd server && podman build --target server -t server --network host .
+podman build --target server -t server --network host server
 ```
 Or download and load from the release page (`server.tar.gz`), I've built one through GitHub Action for you.
 
@@ -116,9 +122,9 @@ We provide three ways here:
 ### normal way: server in container but bot native
 
 ```sh
-podman run --name server -itd --env-file .env --network slirp4netns -p 8081:8081 server
+podman run --name server -itd --env-file .env -p 8081:8081 server
 
-fav_sync_bot -o /path/to/output -l http://localhost:8081 -c podman -i server
+fav_sync_bot -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
 ```
 
 ### run as pod
@@ -147,7 +153,7 @@ podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
 Modify `sync-bot.yaml` to fit your need.
 
 You can download and load `server.tar.gz` and `bot.tar.gz` from the release page first.
-Or command below will automatically build the image for you which cost a lot of time.
+Or command below will automatically build the images for you which cost a lot of time.
 ```sh
 podman kube play sync-bot.yaml
 ```
@@ -184,7 +190,7 @@ Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
 ExecStartPre=/usr/bin/podman restart server
-ExecStart=/usr/local/bin/fav_sync_bot -l http://localhost:8081 -c podman -i server
+ExecStart=/usr/local/bin/fav_sync_bot -l http://127.0.0.1:8081 -c podman -i server
 ExecStop=/bin/bash -c 'kill -SIGINT $MAINPID; for i in {1..5}; do sleep 1; kill -0 $MAINPID 2>/dev/null || exit 0; done; kill -SIGKILL $MAINPID'
 ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure
@@ -209,20 +215,25 @@ WantedBy=default.target
 ```
 Search `podman quadlet` for using podman kube play as systemd service.
 
+```sh
+systemctl --user daemon-reload
+systemctl start --user sync-bot
+```
+
 Note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.
 
 # Development
 
 **Rust 2024 is essencial**
 
-Set `DATABASE_URL` in `.env` to use the database.
+Set `DATABASE_URL` in `.env` to generate entity crate.
 
 ```
+# .env
 DATABASE_URL=sqlite://output/data.db
 ```
 
 Then you can run the following command to create the database and generate the entity:
-```
 
 ```sh
 cargo install sea-orm-cli

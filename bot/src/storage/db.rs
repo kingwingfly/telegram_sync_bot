@@ -6,8 +6,6 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::ActiveValue::*;
 use sea_orm::prelude::*;
 use sea_orm::{Database, DatabaseConnection};
-use teloxide::types::ChatId;
-use teloxide::types::MessageId;
 
 pub(super) async fn establish_connection(
     database_url: impl AsRef<str>,
