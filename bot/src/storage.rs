@@ -6,13 +6,13 @@ use teloxide::types::{ChatId, MessageId};
 
 const CREATE_TABLES: &str = r#"
 CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_id BIGINT NOT NULL,
     file_id TEXT NOT NULL,
     msg_id INTEGER NOT NULL,
     UNIQUE(chat_id, file_id),
-    UNIQUE(chat_id, msg_id)
+    PRIMARY KEY (chat_id, msg_id)
 );
+CREATE INDEX IF NOT EXISTS idx_file_id ON files (file_id);
 CREATE TABLE IF NOT EXISTS paths (
     file_id TEXT PRIMARY KEY,
     path TEXT NOT NULL

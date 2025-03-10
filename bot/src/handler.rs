@@ -224,7 +224,7 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                 fs::rename(&file_path, &target_path).await?;
                                 db.update_path(chat_id, msg_id, &target_path).await?;
                                 info!("Delete: {}", file_path.display());
-                                unpin_msg(&bot, chat_id, msg_id).await?;
+                                // do not need unpin deleted message
                             }
                             _ => {}
                         }
@@ -236,6 +236,7 @@ fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                             fs::rename(file_path, &target_path).await?;
                             db.update_path(chat_id, msg_id, &target_path).await?;
                             info!("Unfav: {}", target_path);
+                            unpin_msg(&bot, chat_id, msg_id).await?;
                         }
                     }
                 } else {
