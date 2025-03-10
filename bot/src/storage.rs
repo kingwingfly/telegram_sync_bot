@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{Context as _, Result};
 use log::info;
 use sqlx::{Row, SqlitePool, query, sqlite::SqliteConnectOptions};
 use std::{ops::Deref, path::Path};
@@ -105,17 +105,6 @@ impl MyStorage {
         Ok(!syncing)
     }
 
-    /// get file_id for msg_id in chat_id
-    pub async fn get_file_id(&self, chat_id: ChatId, msg_id: MessageId) -> Result<Option<String>> {
-        query("SELECT file_id FROM files WHERE chat_id = ? AND msg_id = ?")
-            .bind(chat_id.0)
-            .bind(msg_id.0)
-            .fetch_optional(&self.db)
-            .await
-            .context("Failed to get file_id")
-            .map(|row| row.map(|row| row.get("file_id")))
-    }
-
     /// get msg_id for file_id in chat_id
     pub async fn get_msg_id(&self, chat_id: ChatId, file_id: &str) -> Result<Option<MessageId>> {
         query("SELECT msg_id FROM files WHERE chat_id = ? AND file_id = ?")
@@ -129,18 +118,20 @@ impl MyStorage {
 
     /// get path for file_id of chat_id and msg_id
     pub async fn get_path(&self, chat_id: ChatId, msg_id: MessageId) -> Result<Option<String>> {
-        let Some(file_id) = self.get_file_id(chat_id, msg_id).await? else {
-            return Ok(None);
-        };
-        query("SELECT path FROM paths WHERE file_id = ?")
-            .bind(file_id)
-            .fetch_optional(&self.db)
-            .await
-            .context("Failed to get path")
-            .map(|row| match row.map(|row| row.get("path")) {
-                Some(path) if Path::new(&path).exists() => Some(path),
-                _ => None,
-            })
+        query(
+            "SELECT p.path FROM files f
+            JOIN paths p ON f.file_id = p.file_id
+            WHERE chat_id = ? AND msg_id = ?;",
+        )
+        .bind(chat_id.0)
+        .bind(msg_id.0)
+        .fetch_optional(&self.db)
+        .await
+        .context("Failed to get path")
+        .map(|row| match row.map(|row| row.get("path")) {
+            Some(path) if Path::new(&path).exists() => Some(path),
+            _ => None,
+        })
     }
 
     /// get path for file_id
@@ -158,10 +149,19 @@ impl MyStorage {
 
     /// update path for file_id of chat_id and msg_id
     pub async fn update_path(&self, chat_id: ChatId, msg_id: MessageId, path: &str) -> Result<()> {
-        let Some(file_id) = self.get_file_id(chat_id, msg_id).await? else {
-            return Err(anyhow!("Failed to update path"));
-        };
-        self.insert_or_replace_path(&file_id, path).await
+        sqlx::query(
+            "INSERT OR REPLACE INTO paths (file_id, path)
+                 SELECT f.file_id, ? AS path
+                 FROM files f
+                 WHERE f.chat_id = ? AND f.msg_id = ?",
+        )
+        .bind(path)
+        .bind(chat_id.0)
+        .bind(msg_id.0)
+        .execute(&self.db)
+        .await
+        .context("Failed to update path")?;
+        Ok(())
     }
 
     /// insert msg_id for file_id in chat_id

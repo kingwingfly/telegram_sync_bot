@@ -12,6 +12,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 ## [0.3.2] - 2025-03-10
 
 - command `/trogglesync` to stop saving new files and only works as a reaction handler
+- sql improvements
 
 ## [0.3.1] - 2025-03-10
 
