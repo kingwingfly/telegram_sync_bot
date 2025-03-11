@@ -9,10 +9,6 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
-## [0.4.1] - 2025-03-12
-
-- try hard-link when saving files
-
 ## [0.4.0] - 2025-03-12
 
 - move from `sqlx` to `sea-orm`

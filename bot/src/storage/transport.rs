@@ -119,9 +119,7 @@ impl Downloader {
                                                 .await?;
                                             }
                                             None => {
-                                                if fs::hard_link(&server_path, &save_path).await.is_err() {
-                                                    fs::copy(server_path, save_path).await?;
-                                                }
+                                                fs::copy(server_path, &save_path).await?;
                                             }
                                         },
                                     }
