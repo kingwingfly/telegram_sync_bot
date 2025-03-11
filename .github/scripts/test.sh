@@ -8,7 +8,7 @@ statements=(
     "cargo fetch --locked"
     "cargo clippy --all-features --all-targets -- -D warnings"
 
-    "cargo doc --no-deps -p fav_sync_bot"
+    "cargo doc --no-deps -p telegram_sync_bot"
 )
 
 # loop echo and executing statements
