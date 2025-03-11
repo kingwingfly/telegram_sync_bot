@@ -65,7 +65,7 @@ Deploy:
 ```
 A telegram bot to sync files to local server.
 
-Usage: fav_sync_bot [OPTIONS]
+Usage: telegram_sync_bot [OPTIONS]
 
 Options:
   -o, --output <OUTPUT>
@@ -87,7 +87,7 @@ Options:
 ```
 
 ```sh
-fav_sync_bot -o /path/to/output
+telegram_sync_bot -o /path/to/output
 ```
 
 ## No file size limit (local server)
@@ -97,7 +97,7 @@ You need to apply for telegram api id and hash from [Telegram](https://core.tele
 
 All methods below running local server in container first.
 
-(You can also run local server natively, just omit `-c` and `-i` args when start `fav_sync_bot`.
+(You can also run local server natively, just omit `-c` and `-i` args when start `telegram_sync_bot`.
 I'll just skip this method here)
 
 Get local server image first:
@@ -124,12 +124,12 @@ We provide three ways here:
 ```sh
 podman run --name server -itd --env-file .env -p 8081:8081 server
 
-fav_sync_bot -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
+telegram_sync_bot -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
 ```
 
 ### run as pod
 
-Build `fav_sync_bot` into container image:
+Build `telegram_sync_bot` into container image:
 ```sh
 # build bot image
 podman build --target bot -t bot --network host bot
@@ -170,7 +170,7 @@ After=network-online.target
 Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
-ExecStart=/usr/local/bin/fav_sync_bot
+ExecStart=/usr/local/bin/telegram_sync_bot
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
 Environment="BYPASS_USERS=<...>"
@@ -178,7 +178,7 @@ Environment="BYPASS_USERS=<...>"
 [Install]
 WantedBy=multi-user.target
 ```
-## or with local server container and native fav_sync_bot (after the first setup):
+## or with local server container and native telegram_sync_bot (after the first setup):
 ```ini
 # /etc/systemd/system/sync-bot.service
 [Unit]
@@ -190,7 +190,7 @@ Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
 ExecStartPre=/usr/bin/podman restart server
-ExecStart=/usr/local/bin/fav_sync_bot -l http://127.0.0.1:8081 -c podman -i server
+ExecStart=/usr/local/bin/telegram_sync_bot -l http://127.0.0.1:8081 -c podman -i server
 ExecStop=/bin/bash -c 'kill -SIGINT $MAINPID; for i in {1..5}; do sleep 1; kill -0 $MAINPID 2>/dev/null || exit 0; done; kill -SIGKILL $MAINPID'
 ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure

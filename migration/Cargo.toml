@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-fav_sync_bot = { path = "../bot" }
+telegram_sync_bot = { path = "../bot" }
 
 [dependencies.sea-orm-migration]
 version = "1.1.0"

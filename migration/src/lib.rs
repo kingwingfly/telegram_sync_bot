@@ -1,1 +1,1 @@
-pub use fav_sync_bot::migration::*;
+pub use telegram_sync_bot::migration::*;

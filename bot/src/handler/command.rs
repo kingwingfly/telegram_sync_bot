@@ -1,7 +1,7 @@
 use super::MyDialogue;
 use crate::{context::Context, storage::MyStorage, utils::gen_key};
 use anyhow::Result;
-use log::info;
+use tracing::info;
 use teloxide::{
     Bot,
     dispatching::UpdateHandler,

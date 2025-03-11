@@ -1,5 +1,5 @@
 [package]
-name = "fav_sync_bot"
+name = "telegram_sync_bot"
 version = "0.3.2"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
@@ -17,8 +17,8 @@ anyhow = { version = "1.0.86" }
 # telegram
 teloxide = { version = "0.13", features = ["macros"] }
 # tracing
-log = "0.4"
-pretty_env_logger = "0.4"
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # runtime
 tokio = { version = "1.8", features = [
     "rt-multi-thread",

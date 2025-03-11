@@ -1,11 +1,11 @@
 use anyhow::Result;
-use log::info;
 use teloxide::{
     Bot,
     prelude::Requester as _,
     requests::HasPayload as _,
     types::{ChatId, MessageId, ReactionType},
 };
+use tracing::info;
 
 pub(super) async fn set_emoji(
     bot: &Bot,

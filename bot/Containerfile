@@ -19,8 +19,8 @@ RUN apk update \
 
 WORKDIR /app
 
-COPY --from=bot_builder /work/target/release/fav_sync_bot /app/
+COPY --from=bot_builder /work/target/release/telegram_sync_bot /app/
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT ["/app/fav_sync_bot", "-o", "output"]
+ENTRYPOINT ["/app/telegram_sync_bot", "-o", "output"]

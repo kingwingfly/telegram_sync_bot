@@ -1,12 +1,12 @@
 use super::{MyDialogue, command::cmd_handler, utils::set_emoji};
 use crate::storage::{ChatState, FileState, MyStorage, TransportState};
-use log::info;
 use teloxide::{
     Bot,
     dispatching::{UpdateFilterExt as _, UpdateHandler},
     prelude::Requester as _,
     types::{InputFile, MediaKind, Message, MessageKind, Update},
 };
+use tracing::info;
 
 pub fn msg_handler() -> UpdateHandler<anyhow::Error> {
     Update::filter_message().branch(cmd_handler()).endpoint(

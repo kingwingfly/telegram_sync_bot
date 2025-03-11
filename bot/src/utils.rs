@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use anyhow::{Result, anyhow};
-use log::info;
 use rand::{Rng as _, distr::Alphanumeric};
 use tokio::process;
+use tracing::info;
 
 pub async fn cp_from_container(
     container_manager: impl AsRef<str>,

@@ -5,10 +5,10 @@ use crate::{
 };
 use anyhow::{Context as _, Result, anyhow};
 use clap::Parser;
-use log::info;
 use parking_lot::RwLock;
 use std::{collections::HashSet, path::PathBuf, process::Stdio, sync::Arc};
 use teloxide::{Bot, types::UserId};
+use tracing::info;
 
 #[derive(Parser)]
 #[command(version, about, long_about)]
@@ -34,22 +34,6 @@ pub struct Cli {
 }
 
 fn init() -> Result<()> {
-    #[cfg(debug_assertions)]
-    pretty_env_logger::env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .filter_module("hyper", log::LevelFilter::Info)
-        .filter_module("sqlx", log::LevelFilter::Info)
-        .filter_module("reqwest", log::LevelFilter::Info)
-        .format_timestamp(None)
-        .init();
-    #[cfg(not(debug_assertions))]
-    pretty_env_logger::env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
-        .filter_module("hyper", log::LevelFilter::Info)
-        .filter_module("sqlx", log::LevelFilter::Warn)
-        .filter_module("reqwest", log::LevelFilter::Info)
-        .format_module_path(false)
-        .init();
     dotenv::dotenv().ok();
     // mask token
     let token = std::env::var("TELOXIDE_TOKEN")

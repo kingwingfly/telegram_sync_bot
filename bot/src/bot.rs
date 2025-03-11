@@ -1,8 +1,8 @@
 use crate::{cli::Cli, handler::handler};
 use anyhow::Result;
-use log::info;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tokio::task::JoinHandle;
+use tracing::info;
 
 pub async fn run() -> Result<()> {
     let (bot, context, storage) = Cli::init().await?;

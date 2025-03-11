@@ -2,7 +2,6 @@ use super::state::TransportState;
 use crate::context::Context;
 use crate::utils::cp_from_container;
 use anyhow::Result;
-use log::info;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -14,6 +13,7 @@ use teloxide::net::Download as _;
 use teloxide::prelude::{Request as _, Requester as _};
 use tokio::fs;
 use tokio_util::sync::CancellationToken;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct TransportHandle {

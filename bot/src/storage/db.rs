@@ -2,12 +2,12 @@ use super::entity::{chat_state, file_handle, file_state};
 use super::state::*;
 use crate::migration::{Migrator, MigratorTrait};
 use anyhow::Result;
-use log::info;
 use sea_orm::ActiveValue::*;
 use sea_orm::TransactionTrait as _;
 use sea_orm::prelude::*;
 use sea_orm::sea_query;
 use sea_orm::{Database, DatabaseConnection};
+use tracing::info;
 
 pub(super) async fn establish_connection(
     database_url: impl AsRef<str>,

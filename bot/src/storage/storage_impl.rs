@@ -3,11 +3,11 @@ use super::{FileId, FileName};
 use super::{db::Db, state::*, transport::Downloader};
 use crate::context::Context;
 use anyhow::{Result, anyhow};
-use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::types::{ChatId, MessageId};
 use tokio::fs;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct MyStorage {

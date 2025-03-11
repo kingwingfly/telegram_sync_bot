@@ -6,7 +6,7 @@ use crate::{
     context::Context,
     storage::{ChatState, FileState, MyStorage},
 };
-use log::{debug, info};
+use tracing::{debug, info};
 use teloxide::{
     Bot,
     dispatching::{UpdateFilterExt as _, UpdateHandler},
