@@ -1,7 +1,6 @@
 #!/bin/bash
 
 sql="
-BEGIN TRANSACTION;
 DELETE FROM file_handle
 WHERE file_id IN (
     SELECT file_id
@@ -10,9 +9,8 @@ WHERE file_id IN (
 );
 DELETE FROM file_state
 WHERE name = '$1';
-COMMIT;
 "
 
-limbo data.db $sql
+limbo data.db "$sql"
 
 fd $1 . -x rm -f {}
