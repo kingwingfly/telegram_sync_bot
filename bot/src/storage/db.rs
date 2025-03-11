@@ -136,25 +136,28 @@ impl Db {
         }
     }
 
-    pub(super) async fn get_file_state_by_handle(&self, handle: (i64, i32)) -> Result<FileState> {
+    pub(super) async fn get_file_state_and_name_by_handle(
+        &self,
+        handle: (i64, i32),
+    ) -> Result<(FileState, String)> {
         let txn = self.db.begin().await?;
         let file_id = match file_handle::Entity::find_by_id(handle).one(&txn).await? {
             Some(m) => m.file_id,
             None => return Err(anyhow::anyhow!("File not found")),
         };
         let state = match file_state::Entity::find_by_id(file_id).one(&txn).await? {
-            Some(m) => m.state.into(),
+            Some(m) => (m.state.into(), m.file_name),
             None => return Err(anyhow::anyhow!("File not found")),
         };
         txn.commit().await?;
         Ok(state)
     }
 
-    pub(super) async fn set_file_state_by_handle(
+    pub(super) async fn set_file_state_by_handle_returning_old_state(
         &self,
         handle: (i64, i32),
         state: FileState,
-    ) -> Result<Option<(FileState, String)>> {
+    ) -> Result<Option<FileState>> {
         let txn = self.db.begin().await?;
         let file_id = match file_handle::Entity::find_by_id(handle).one(&txn).await? {
             Some(m) => m.file_id,
@@ -163,7 +166,7 @@ impl Db {
         let old_state = file_state::Entity::find_by_id(file_id.to_owned())
             .one(&txn)
             .await?
-            .map(|m| (m.state.into(), m.file_name));
+            .map(|m| m.state.into());
         file_state::Entity::insert(file_state::ActiveModel {
             file_id: Set(file_id.to_owned()),
             state: Set(state.to_string()),

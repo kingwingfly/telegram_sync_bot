@@ -39,40 +39,51 @@ impl MyStorage {
 
     pub async fn get_file_state_by_handle(&self, handle: (ChatId, MessageId)) -> Result<FileState> {
         self.db
-            .get_file_state_by_handle((handle.0.0, handle.1.0))
+            .get_file_state_and_name_by_handle((handle.0.0, handle.1.0))
             .await
+            .map(|state_name| state_name.0)
     }
 
-    /// 1. set file state by handle
-    /// 2. hard link file to correct directory
+    /// 1. hard link file to correct directory
+    /// 2. set file state by handle
     pub async fn set_file_state_by_handle_and_link(
         &self,
         handle: (ChatId, MessageId),
         state: FileState,
     ) -> Result<()> {
-        let Some((old_state, file_name)) = self
+        let (old_state, file_name) = self
             .db
-            .set_file_state_by_handle((handle.0.0, handle.1.0), state)
-            .await?
-        else {
-            return Ok(());
-        };
+            .get_file_state_and_name_by_handle((handle.0.0, handle.1.0))
+            .await?;
         let from = self.context.output_dir.join(&file_name);
+
+        for _ in 0..32768 {
+            // waiting 27 hours or so
+            if fs::try_exists(&from).await? {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        }
+        if !fs::try_exists(&from).await? {
+            return Err(anyhow!("File not exists {}", file_name));
+        }
         let dir = self
             .context
             .output_dir
             .join(handle.0.to_string())
             .join(state.to_string().to_lowercase());
-        let old = self
-            .context
-            .output_dir
-            .join(handle.0.to_string())
+        let old = dir
             .join(old_state.to_string().to_lowercase())
             .join(&file_name);
         let to = dir.join(&file_name);
         fs::create_dir_all(&dir).await?;
         fs::hard_link(&from, &to).await?;
         fs::remove_file(&old).await.ok();
+
+        self.db
+            .set_file_state_by_handle_returning_old_state((handle.0.0, handle.1.0), state)
+            .await?;
+
         Ok(())
     }
 }

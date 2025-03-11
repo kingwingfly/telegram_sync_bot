@@ -12,8 +12,9 @@ pub fn msg_handler() -> UpdateHandler<anyhow::Error> {
     Update::filter_message().branch(cmd_handler()).endpoint(
         async |bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage| {
             let chat_id = msg.chat.id;
-            if matches!(storage.get_chat_state(chat_id).await?, ChatState::Paused) {
-                bot.send_message(chat_id, "Sync paused").await?;
+            let chat_state = storage.get_chat_state(chat_id).await?;
+            if chat_state == ChatState::Paused {
+                bot.send_message(chat_id, "Bot paused").await?;
                 dialogue.exit().await?;
                 return Ok(());
             }
@@ -62,6 +63,9 @@ pub fn msg_handler() -> UpdateHandler<anyhow::Error> {
                         debug_assert_eq!(old_chat_id, chat_id, "chat_id mismatch");
                         bot.delete_message(old_chat_id, old_msg_id).await?;
                         info!(">> BOT: deleted message {}", old_msg_id);
+                    }
+                    if chat_state == ChatState::PartiallyActive {
+                        return Ok(());
                     }
                     tokio::spawn(async move {
                         set_emoji(&bot, chat_id, msg_id, "🫡").await?;

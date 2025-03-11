@@ -6,15 +6,15 @@ pub enum ChatState {
     Paused,
     #[cfg_attr(debug_assertions, default)]
     Active,
-    PatiallyActive,
+    PartiallyActive,
 }
 
 impl ChatState {
     pub fn troggle(self) -> Self {
         match self {
             ChatState::Paused => ChatState::Active,
-            ChatState::Active => ChatState::PatiallyActive,
-            ChatState::PatiallyActive => ChatState::Paused,
+            ChatState::Active => ChatState::PartiallyActive,
+            ChatState::PartiallyActive => ChatState::Paused,
         }
     }
 }
@@ -24,7 +24,7 @@ impl<S: AsRef<str>> From<S> for ChatState {
         match s.as_ref() {
             "Paused" => ChatState::Paused,
             "Active" => ChatState::Active,
-            "PartiallyActive" => ChatState::PatiallyActive,
+            "PartiallyActive" => ChatState::PartiallyActive,
             _ => panic!("Unknown chat state: {}", s.as_ref()),
         }
     }
@@ -35,7 +35,7 @@ impl fmt::Display for ChatState {
         match self {
             ChatState::Paused => write!(f, "Paused"),
             ChatState::Active => write!(f, "Active"),
-            ChatState::PatiallyActive => write!(f, "PartiallyActive"),
+            ChatState::PartiallyActive => write!(f, "PartiallyActive"),
         }
     }
 }
