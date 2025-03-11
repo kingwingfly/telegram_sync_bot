@@ -239,3 +239,5 @@ mkdir output
 sea-orm-cli migrate refresh
 sea-orm-cli generate entity --expanded-format -o bot/src/storage/entity/inner
 ```
+
+You can use `delete.sh` to delete files both in the database and the file system.
