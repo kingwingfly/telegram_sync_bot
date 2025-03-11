@@ -45,10 +45,20 @@ fn init() -> Result<()> {
         .filter_module("reqwest", log::LevelFilter::Info)
         .init();
     dotenv::dotenv().ok();
-    info!(
-        "TELOXIDE_TOKEN: {}",
-        std::env::var("TELOXIDE_TOKEN").context("TELOXIDE_TOKEN unset")?
-    );
+    // mask token
+    let token = std::env::var("TELOXIDE_TOKEN")
+        .context("TELOXIDE_TOKEN unset")?
+        .chars()
+        .enumerate()
+        .fold("".to_string(), |mut acc, (i, c)| {
+            if i < 5 {
+                acc.push(c);
+            } else {
+                acc.push('*');
+            }
+            acc
+        });
+    info!("TELOXIDE_TOKEN: {}", token);
     Ok(())
 }
 
