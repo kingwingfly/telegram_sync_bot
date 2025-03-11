@@ -29,6 +29,7 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 - fix bug: delete the message out of control
 - log more detailed Context
 - pin while fav, unpin while unfav or delete
+- improve direct to bot msg experience
 
 ## [0.3.0] - 2025-03-10
 

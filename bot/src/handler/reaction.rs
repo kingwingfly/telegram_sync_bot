@@ -6,13 +6,13 @@ use crate::{
     context::Context,
     storage::{ChatState, FileState, MyStorage},
 };
-use tracing::{debug, info};
 use teloxide::{
     Bot,
     dispatching::{UpdateFilterExt as _, UpdateHandler},
     prelude::Requester as _,
     types::{ReactionCount, ReactionType, Update, UpdateKind},
 };
+use tracing::{debug, info};
 
 pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
     Update::filter_message_reaction_updated().endpoint(
@@ -36,13 +36,13 @@ pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                 pin_msg(&bot, chat_id, msg_id).await?;
                             }
                             "👎" => {
+                                storage.cancel_task_by_handle(chat_id, msg_id).await?;
+                                bot.delete_message(chat_id, msg_id).await?;
+                                // do not need unpin deleted message
                                 storage
                                     .set_file_state_by_handle_and_link(handle, FileState::Trash)
                                     .await?;
-                                bot.delete_message(chat_id, msg_id).await?;
-                                storage.cancel_task_by_handle(chat_id, msg_id).await?;
                                 info!(">> BOT: deleted disliked message");
-                                // do not need unpin deleted message
                             }
                             _ => {}
                         }
@@ -112,13 +112,13 @@ pub fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         pin_msg(&bot, chat_id, msg_id).await?;
                         info!("Fav: file-handle ({} {})", chat_id, msg_id);
                     } else if score < ctx.delete_score_limit {
+                        storage.cancel_task_by_handle(chat_id, msg_id).await?;
+                        bot.delete_message(chat_id, msg_id).await?;
+                        // do not need unpin deleted message
                         storage
                             .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Trash)
                             .await?;
-                        bot.delete_message(chat_id, msg_id).await?;
-                        storage.cancel_task_by_handle(chat_id, msg_id).await?;
                         info!("Deleted disliked message");
-                        // do not need unpin deleted message
                     } else {
                         storage
                             .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Normal)

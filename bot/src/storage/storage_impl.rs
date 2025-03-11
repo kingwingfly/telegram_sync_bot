@@ -100,6 +100,7 @@ impl MyStorage {
             self.db.get_transport_state(file_id.to_string()).await,
             Ok(TransportState::Completed)
         ) {
+            info!(">> Storage: already finished");
             return Ok(None);
         }
         self.db

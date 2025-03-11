@@ -1,11 +1,9 @@
-mod channel;
 mod command;
 mod message;
 mod reaction;
 mod utils;
 
-use channel::channel_post_handler;
-use message::msg_handler;
+use message::{channel_post_handler, msg_handler};
 use reaction::{reaction_count_handler, reaction_handler};
 use teloxide::{
     dispatching::{

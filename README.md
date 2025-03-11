@@ -8,10 +8,8 @@ Build with Rust and Teloxide.
 
 The bot will download the file and save it to the specified directory.
 
-Then it will send files saved back to the owner (This is necessary for it's prevented to midify user sent messages).
-
-The owner can then react to the returned messages with emoji to manage the file:
-- "👍" | "❤": move the file to favorite directory
+The owner can then react to the messages with emoji to manage the file:
+- "👍" | "❤": pin and move the file to favorite directory
 - "👎": move the file to trash
 
 ## file sent to bot managed channel
@@ -25,7 +23,7 @@ Initially, the bot owner send `/troggle <bypasskey>` to the bot to troggle among
 
 The bot will set "🫡" reaction to the file message to indicate the file is downloading.
 
-Once done, the bot will set "👌". ("😭" if failed, "😨" if canceled)
+Once done, the bot will set "👌". ("😭" if failed, "😨" if canceled, "👾" for inner bug)
 
 People can react to the file with emoji, and the bot will count the score of the file.
 
