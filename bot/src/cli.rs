@@ -88,7 +88,7 @@ impl Cli {
                             .success()
                         {
                             return Err(anyhow!(
-                                "Container check not pass: invalid container manager or bad container"
+                                "Container check not pass: invalid container manager or unsupport container"
                             ));
                         }
                     }
@@ -119,7 +119,6 @@ impl Cli {
                 output_dir: args.output,
                 fav_score_limit: args.fav_score_limit,
                 delete_score_limit: args.delete_score_limit,
-                syncing: AtomicBool::new(true),
             }),
         };
         info!("Context: {}", context);
