@@ -3,6 +3,7 @@ use super::{FileId, FileName};
 use super::{db::Db, state::*, transport::Downloader};
 use crate::context::Context;
 use anyhow::{Result, anyhow};
+use log::info;
 use std::sync::{Arc, RwLock};
 use teloxide::Bot;
 use teloxide::types::{ChatId, MessageId};
@@ -56,6 +57,7 @@ impl MyStorage {
 impl MyStorage {
     /// add a download task, return a handle
     pub async fn add_task(&self, file_id: FileId, file_name: FileName) -> Result<TransportHandle> {
+        info!(">> Storage: Add new task {}", file_name);
         if matches!(
             self.db.get_transport_state(&file_id).await,
             Ok(TransportState::Completed)
@@ -82,6 +84,7 @@ impl MyStorage {
     pub async fn cancel_task_by_handle(&self, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
         match self.db.get_file_id_by_handle((chat_id.0, msg_id.0)).await? {
             Some(file_id) => {
+                info!(">> Storage: Cancel task {}", file_id);
                 self.downloader.cancel(file_id);
                 Ok(())
             }

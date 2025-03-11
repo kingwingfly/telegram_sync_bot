@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ChatState {
     #[cfg_attr(not(debug_assertions), default)]
     Paused,
@@ -40,7 +40,7 @@ impl fmt::Display for ChatState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum TransportState {
     #[default]
     Pending,
@@ -78,7 +78,7 @@ impl fmt::Display for TransportState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum FileState {
     #[default]
     Normal,

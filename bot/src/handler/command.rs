@@ -50,7 +50,7 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
             }),
         )
         .branch(case![Command::BypassKey].endpoint(async |ctx: Context| {
-            info!("BypassKey: {}", ctx.bypasskey.read().unwrap());
+            info!(">> BOT: BypassKey: {}", ctx.bypasskey.read().unwrap());
             Ok(())
         }))
         .branch(
@@ -64,9 +64,11 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
         .branch(case![Command::Troggle].endpoint(
             async |bot: Bot, dialogue: MyDialogue, msg: Message, ctx: Context, db: MyStorage| {
                 if !auth(&bot, &dialogue, &msg, &ctx).await? {
+                    info!(">> BOT: auth not pass");
                     return Ok(());
                 }
                 let state = db.troggle_chat_state(msg.chat.id).await?;
+                info!(">> BOT: curren state of {} {}", msg.chat.id, state);
                 bot.send_message(msg.chat.id, format!("Current State: {}", state))
                     .await?;
                 Ok(())
@@ -94,7 +96,7 @@ async fn auth(bot: &Bot, dialogue: &MyDialogue, msg: &Message, ctx: &Context) ->
             {
                 // renew bypass_pwd
                 let new = gen_key();
-                info!("New bypasskey: {}", new);
+                info!(">> BOT: New bypasskey: {}", new);
                 *ctx.bypasskey.write().unwrap() = new;
                 Ok(true)
             }

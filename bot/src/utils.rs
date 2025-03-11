@@ -11,7 +11,7 @@ pub async fn cp_from_container(
     from: impl AsRef<Path>,
     to: impl AsRef<Path>,
 ) -> Result<()> {
-    info!("Moving from container manager");
+    info!(">> IO: moving from container manager");
     if !process::Command::new(container_manager.as_ref())
         .args([
             "cp",

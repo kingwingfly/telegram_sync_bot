@@ -41,7 +41,7 @@ pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                                     .await?;
                                 bot.delete_message(chat_id, msg_id).await?;
                                 storage.cancel_task_by_handle(chat_id, msg_id).await?;
-                                info!("Deleted disliked message");
+                                info!(">> BOT: deleted disliked message");
                                 // do not need unpin deleted message
                             }
                             _ => {}
@@ -57,9 +57,8 @@ pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         }
                     }
                 } else {
-                    debug!("Unknown file state");
                     bot.delete_message(chat_id, msg_id).await?;
-                    info!("Deleted out of control message");
+                    info!(">> BOT: deleted out of control message");
                 }
             }
             Ok(())
@@ -111,6 +110,7 @@ pub fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                             .set_file_state_by_handle((chat_id, msg_id), FileState::Fav)
                             .await?;
                         pin_msg(&bot, chat_id, msg_id).await?;
+                        info!("Fav: file-handle ({} {})", chat_id, msg_id);
                     } else if score < ctx.delete_score_limit {
                         storage
                             .set_file_state_by_handle((chat_id, msg_id), FileState::Trash)
@@ -124,6 +124,7 @@ pub fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                             .set_file_state_by_handle((chat_id, msg_id), FileState::Normal)
                             .await?;
                         unpin_msg(&bot, chat_id, msg_id).await?;
+                        info!("Unfav: file-handle ({} {})", chat_id, msg_id);
                     }
                 } else {
                     debug!("Unknown file state");

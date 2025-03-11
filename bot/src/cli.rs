@@ -58,7 +58,7 @@ fn init() -> Result<()> {
             }
             acc
         });
-    info!("TELOXIDE_TOKEN: {}", token);
+    info!(">> INIT: TELOXIDE_TOKEN: {}", token);
     Ok(())
 }
 
@@ -74,7 +74,7 @@ impl Cli {
                 local_server: { args.local_server_url.is_some() },
                 container_manager: {
                     if let Some(c) = &args.container_manager {
-                        info!("Checking container manager");
+                        info!(">> INIT: checking container manager");
                         if !std::process::Command::new(c)
                             .args([
                                 "logs",
@@ -121,7 +121,7 @@ impl Cli {
                 delete_score_limit: args.delete_score_limit,
             }),
         };
-        info!("Context: {}", context);
+        info!(">> INIT: {}", context);
         let mut bot = Bot::from_env();
         if let Some(url) = args.local_server_url {
             bot = bot.set_api_url(url.parse().context("Failed to parse local server url")?);

@@ -1,5 +1,6 @@
 use crate::{cli::Cli, handler::handler};
 use anyhow::Result;
+use log::info;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tokio::task::JoinHandle;
 
@@ -12,6 +13,7 @@ pub async fn run() -> Result<()> {
     let listener: JoinHandle<Result<()>> = tokio::spawn(async move {
         tokio::signal::ctrl_c().await?;
         shutdown.shutdown()?.await;
+        info!(">> BOT: shutdown");
         Ok(())
     });
     dispatcher.dispatch().await;

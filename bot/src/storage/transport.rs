@@ -2,6 +2,7 @@ use super::state::TransportState;
 use crate::context::Context;
 use crate::utils::cp_from_container;
 use anyhow::Result;
+use log::info;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::{Sender, channel};
@@ -28,7 +29,7 @@ impl TransportHandle {
     }
 
     pub fn get_state(&self) -> TransportState {
-        self.state.read().unwrap().clone()
+        *self.state.read().unwrap()
     }
 
     fn set_state(&self, state: TransportState) {
@@ -77,6 +78,7 @@ impl Downloader {
                                 let bot = bot.clone();
                                 let context = context.clone();
                                 if let Some(old) = cancels.write().unwrap().insert(file_id.clone(), handle.cancel.clone()) {
+                                    info!(">> DOWNLOADER: dumplicated, cancel old task {}", file_id);
                                     old.cancel();
                                 };
                                 async fn download(
@@ -86,6 +88,7 @@ impl Downloader {
                                     context: Context,
                                     handle: TransportHandle
                                 ) -> Result<()> {
+                                    info!(">> DOWNLOADER: start task {}", file_id);
                                     handle.set_state(TransportState::Downloading);
                                     let save_path = context.output_dir.join(file_name);
                                     let server_path = loop {
@@ -119,6 +122,7 @@ impl Downloader {
                                             }
                                         },
                                     }
+                                    info!(">> DOWNLOADER: finish task {}", file_id);
                                     Ok(())
                                 }
                                 let cancels_c = cancels.clone();
@@ -132,6 +136,7 @@ impl Downloader {
                                             handle.cancel(); // when downloading, await cancel.cancelled() avoiding loop checking
                                         },
                                         _ = handle.cancel.cancelled() => {
+                                            info!(">> DOWNLOADER: task cancelled {}", file_id);
                                             handle.set_state(TransportState::Cancelled);
                                         },
                                     };
@@ -144,6 +149,7 @@ impl Downloader {
                                 }
                             }
                             Message::Shutdown => {
+                                info!(">> DOWNLOADER: shutdown");
                                 for (_, cancel) in cancels.read().unwrap().iter() {
                                     cancel.cancel();
                                 }

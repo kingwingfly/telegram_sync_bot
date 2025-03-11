@@ -31,7 +31,8 @@ pub(super) struct Db {
 
 impl Db {
     pub(super) async fn new(database_url: impl AsRef<str>) -> Result<Self> {
-        let db = establish_connection(database_url).await?;
+        let db = establish_connection(database_url.as_ref()).await?;
+        info!(">> DB: connect to {}", database_url.as_ref());
         Ok(Self { db })
     }
 }
@@ -67,6 +68,10 @@ impl Db {
         .exec(&txn)
         .await?;
         txn.commit().await?;
+        info!(
+            ">> DB: set chat {} state from {} to {}",
+            chat_id, current_state, new_state
+        );
         Ok(new_state)
     }
 
@@ -100,7 +105,11 @@ impl Db {
         )
         .exec(&self.db)
         .await?;
-
+        info!(
+            ">> DB: set transport state {} to {}",
+            file_id.as_ref(),
+            tranport_state
+        );
         Ok(())
     }
 
@@ -139,7 +148,7 @@ impl Db {
             None => return Err(anyhow::anyhow!("File not found")),
         };
         file_state::Entity::insert(file_state::ActiveModel {
-            file_id: Set(file_id),
+            file_id: Set(file_id.to_owned()),
             state: Set(state.to_string()),
             ..Default::default()
         })
@@ -151,6 +160,7 @@ impl Db {
         .exec(&txn)
         .await?;
         txn.commit().await?;
+        info!(">> DB: set file {} state to {}", file_id, state);
         Ok(())
     }
 
@@ -195,7 +205,7 @@ impl Db {
                 file_handle::Entity::insert(file_handle::ActiveModel {
                     chat_id: Set(handle.0),
                     msg_id: Set(handle.1),
-                    file_id: Set(file_id),
+                    file_id: Set(file_id.to_owned()),
                 })
                 .exec(&txn)
                 .await?;
@@ -203,6 +213,7 @@ impl Db {
             }
         };
         txn.commit().await?;
+        info!(">> DB: set file {} handle {:?}", file_id, handle);
         result
     }
 }

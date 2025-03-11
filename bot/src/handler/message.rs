@@ -1,7 +1,7 @@
 use super::{MyDialogue, command::cmd_handler, utils::set_emoji};
 use crate::storage::{ChatState, MyStorage, TransportState};
 use anyhow::Result;
-use log::{debug, info};
+use log::info;
 use teloxide::{
     Bot,
     dispatching::{UpdateFilterExt as _, UpdateHandler},
@@ -62,6 +62,7 @@ pub fn msg_handler() -> UpdateHandler<anyhow::Error> {
                     {
                         debug_assert_eq!(_old_chat_id, chat_id, "chat_id mismatch");
                         bot.delete_message(chat_id, old_msg_id).await?;
+                        info!(">> BOT: deleted message {}", old_msg_id);
                     }
                     let handle = storage.add_task(file_id, file_name).await?;
                     tokio::spawn(async move {
