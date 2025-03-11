@@ -1,8 +1,8 @@
+use super::entity::{chat_state, file_handle, file_state};
 use super::state::*;
+use crate::migration::{Migrator, MigratorTrait};
 use anyhow::Result;
-use entity::{chat_state, file_handle, file_state};
 use log::info;
-use migration::{Migrator, MigratorTrait};
 use sea_orm::ActiveValue::*;
 use sea_orm::TransactionTrait as _;
 use sea_orm::prelude::*;

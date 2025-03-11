@@ -37,11 +37,11 @@ People can react to the file with emoji, and the bot will count the score of the
 |👎🤯😱😢🥴🌚😐🖕😨|-1|
 |🤬🤮💩🤡💔😡|-2|
 
-If the score >= fav_score_limit, the bot will move the file to favorite directory and pin it.
+If the score >= fav_score_limit, the bot will hard-link the file to favorite directory and pin it.
 
-If the score < delete_score_limit, the bot will move the file to trash and delete from channel.
+If the score < delete_score_limit, the bot will hard-link the file to trash and delete from channel.
 
-Otherwise, the bot will do nothing and unpin the file if necessary.
+Otherwise, the bot will hard-link the file to normal directory and unpin the file if necessary.
 
 Note: it takes minites to get ReactionCountUpdate, so the bot will not handle reaction from channel immediately.
 
@@ -239,5 +239,5 @@ Then you can run the following command to create the database and generate the e
 cargo install sea-orm-cli
 mkdir output
 sea-orm-cli migrate refresh
-sea-orm-cli generate entity -l --expanded-format -o entity/src
+sea-orm-cli generate entity --expanded-format -o bot/src/storage/entity/inner
 ```

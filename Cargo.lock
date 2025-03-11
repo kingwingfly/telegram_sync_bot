@@ -677,13 +677,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "entity"
-version = "0.1.0"
-dependencies = [
- "sea-orm",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -757,13 +750,12 @@ dependencies = [
  "anyhow",
  "clap",
  "dotenv",
- "entity",
  "log",
- "migration",
  "parking_lot",
  "pretty_env_logger",
  "rand 0.9.0",
  "sea-orm",
+ "sea-orm-migration",
  "teloxide",
  "tokio",
  "tokio-util",
@@ -1483,6 +1475,7 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 name = "migration"
 version = "0.1.0"
 dependencies = [
+ "fav_sync_bot",
  "sea-orm-migration",
  "tokio",
 ]

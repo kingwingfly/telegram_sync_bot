@@ -1,4 +1,5 @@
 mod db;
+mod entity;
 mod state;
 mod storage_impl;
 mod transport;

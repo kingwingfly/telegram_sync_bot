@@ -1,5 +1,5 @@
 [workspace]
-members = ["bot", "entity", "migration"]
+members = ["bot", "migration"]
 default-members = ["bot"]
 resolver = "2"
 
