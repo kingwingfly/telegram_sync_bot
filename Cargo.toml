@@ -1,12 +1,7 @@
 [workspace]
-members = ["bot"]
+members = ["bot", "entity", "migration"]
+default-members = ["bot"]
 resolver = "2"
-
-[workspace.package]
-
-
-[workspace.dependencies]
-
 
 [profile.release]
 lto = "fat"

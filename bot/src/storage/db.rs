@@ -1,194 +1,241 @@
-use anyhow::{Context as _, Result};
+use super::state::*;
+use anyhow::Result;
+use entity::{chat_state, file_handle, file_state};
 use log::info;
-use sqlx::{Row, SqlitePool, query, sqlite::SqliteConnectOptions};
-use std::{ops::Deref, path::Path};
-use teloxide::types::{ChatId, MessageId};
+use migration::{Migrator, MigratorTrait};
+use sea_orm::ActiveValue::*;
+use sea_orm::TransactionTrait as _;
+use sea_orm::prelude::*;
+use sea_orm::sea_query;
+use sea_orm::{Database, DatabaseConnection};
 
-const CREATE_TABLES: &str = r#"
-CREATE TABLE IF NOT EXISTS files (
-    chat_id BIGINT NOT NULL,
-    file_id TEXT NOT NULL,
-    msg_id INTEGER NOT NULL,
-    UNIQUE(chat_id, file_id),
-    PRIMARY KEY (chat_id, msg_id)
-);
-CREATE INDEX IF NOT EXISTS idx_file_id ON files (file_id);
-CREATE TABLE IF NOT EXISTS paths (
-    file_id TEXT PRIMARY KEY,
-    path TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS chats (
-    chat_id BIGINT PRIMARY KEY,
-    syncing BOOLEAN DEFAULT TRUE
-);"#;
+pub(super) async fn establish_connection(
+    database_url: impl AsRef<str>,
+) -> Result<DatabaseConnection> {
+    info!("Connecting to database");
+    let connection = Database::connect(database_url.as_ref()).await?;
+    #[cfg(debug_assertions)]
+    Migrator::refresh(&connection).await?;
+    #[cfg(not(debug_assertions))]
+    Migrator::up(&connection, None).await?;
+
+    info!("Connected to database");
+    Ok(connection)
+}
 
 #[derive(Debug, Clone)]
-pub struct MyStorage {
-    db: SqlitePool,
+pub(super) struct Db {
+    db: DatabaseConnection,
 }
 
-impl Deref for MyStorage {
-    type Target = SqlitePool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.db
+impl Db {
+    pub(super) async fn new(database_url: impl AsRef<str>) -> Result<Self> {
+        let db = establish_connection(database_url.as_ref()).await?;
+        info!(">> DB: connect to {}", database_url.as_ref());
+        Ok(Self { db })
     }
 }
 
-impl MyStorage {
-    pub async fn new(filename: String) -> Self {
-        info!("Create sqlite: {}", filename);
-        let db = SqlitePool::connect_with(
-            SqliteConnectOptions::new()
-                .filename(filename)
-                .create_if_missing(true),
-        )
-        .await
-        .unwrap();
-        let mut tx = db.begin().await.unwrap();
-        sqlx::query(CREATE_TABLES)
-            .execute(&mut *tx)
-            .await
-            .context("Failed to create tables")
-            .unwrap();
-        tx.commit().await.unwrap();
-        Self { db }
-    }
-
-    pub async fn get_chat_state(&self, chat_id: ChatId) -> bool {
-        query("SELECT 1 FROM chats WHERE chat_id = ?")
-            .bind(chat_id.0)
-            .fetch_one(&self.db)
-            .await
-            .map(|_| true)
-            .unwrap_or(false)
-    }
-
-    /// return true if switched to working
-    pub async fn switch_chat_state(&self, chat_id: ChatId) -> Result<bool> {
-        let chat_state = self.get_chat_state(chat_id).await;
-        if chat_state {
-            query("DELETE FROM chats WHERE chat_id = ?")
-                .bind(chat_id.0)
-                .execute(&self.db)
-                .await
-                .context("Failed to delete chat state")?;
-        } else {
-            query("INSERT INTO chats (chat_id) VALUES (?)")
-                .bind(chat_id.0)
-                .execute(&self.db)
-                .await
-                .context("Failed to insert chat state")?;
+impl Db {
+    pub(super) async fn get_chat_state(&self, chat_id: i64) -> Result<ChatState> {
+        match chat_state::Entity::find_by_id(chat_id)
+            .one(&self.db)
+            .await?
+        {
+            Some(m) => Ok(m.state.into()),
+            None => Ok(ChatState::default()),
         }
-        Ok(!chat_state)
     }
 
-    /// get syncing state
-    pub async fn get_syncing_state(&self, chat_id: ChatId) -> bool {
-        query("SELECT syncing FROM chats WHERE chat_id = ?")
-            .bind(chat_id.0)
-            .fetch_one(&self.db)
-            .await
-            .map(|row| row.get("syncing"))
-            .context("Failed to get syncing state")
-            .unwrap_or_default()
-    }
-
-    /// troggle syncing state
-    pub async fn troggle_syncing(&self, chat_id: ChatId) -> Result<bool> {
-        let syncing = self.get_syncing_state(chat_id).await;
-        query("UPDATE chats SET syncing = NOT syncing WHERE chat_id = ?")
-            .bind(chat_id.0)
-            .execute(&self.db)
-            .await
-            .context("Failed to troggle syncing state")?;
-        Ok(!syncing)
-    }
-
-    /// get msg_id for file_id in chat_id
-    pub async fn get_msg_id(&self, chat_id: ChatId, file_id: &str) -> Result<Option<MessageId>> {
-        query("SELECT msg_id FROM files WHERE chat_id = ? AND file_id = ?")
-            .bind(chat_id.0)
-            .bind(file_id)
-            .fetch_optional(&self.db)
-            .await
-            .context("Failed to get msg_id")
-            .map(|row| row.map(|row| MessageId(row.get("msg_id"))))
-    }
-
-    /// get path for file_id of chat_id and msg_id
-    pub async fn get_path(&self, chat_id: ChatId, msg_id: MessageId) -> Result<Option<String>> {
-        query(
-            "SELECT p.path FROM files f
-            JOIN paths p ON f.file_id = p.file_id
-            WHERE chat_id = ? AND msg_id = ?;",
-        )
-        .bind(chat_id.0)
-        .bind(msg_id.0)
-        .fetch_optional(&self.db)
-        .await
-        .context("Failed to get path")
-        .map(|row| match row.map(|row| row.get("path")) {
-            Some(path) if Path::new(&path).exists() => Some(path),
-            _ => None,
+    pub(super) async fn troggle_chat_state(&self, chat_id: i64) -> Result<ChatState> {
+        let txn = self.db.begin().await?;
+        let current_state: ChatState =
+            match chat_state::Entity::find_by_id(chat_id).one(&txn).await? {
+                Some(m) => m.state.into(),
+                None => ChatState::default(),
+            };
+        let new_state = current_state.troggle();
+        chat_state::Entity::insert(chat_state::ActiveModel {
+            chat_id: Set(chat_id),
+            state: Set(new_state.to_string()),
         })
-    }
-
-    /// get path for file_id
-    pub async fn get_path_by_file_id(&self, file_id: &str) -> Result<Option<String>> {
-        query("SELECT path FROM paths WHERE file_id = ?")
-            .bind(file_id)
-            .fetch_optional(&self.db)
-            .await
-            .context("Failed to get path")
-            .map(|row| match row.map(|row| row.get("path")) {
-                Some(path) if Path::new(&path).exists() => Some(path),
-                _ => None,
-            })
-    }
-
-    /// update path for file_id of chat_id and msg_id
-    pub async fn update_path(&self, chat_id: ChatId, msg_id: MessageId, path: &str) -> Result<()> {
-        sqlx::query(
-            "INSERT OR REPLACE INTO paths (file_id, path)
-                 SELECT f.file_id, ? AS path
-                 FROM files f
-                 WHERE f.chat_id = ? AND f.msg_id = ?",
+        .on_conflict(
+            sea_query::OnConflict::column(chat_state::Column::ChatId)
+                .update_column(chat_state::Column::State)
+                .to_owned(),
         )
-        .bind(path)
-        .bind(chat_id.0)
-        .bind(msg_id.0)
-        .execute(&self.db)
-        .await
-        .context("Failed to update path")?;
+        .exec(&txn)
+        .await?;
+        txn.commit().await?;
+        info!(
+            ">> DB: set chat {} state from {} to {}",
+            chat_id, current_state, new_state
+        );
+        Ok(new_state)
+    }
+
+    pub(super) async fn set_file_name(&self, file_id: String, file_name: String) -> Result<()> {
+        file_state::Entity::insert(file_state::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            file_name: Set(file_name.to_owned()),
+            ..Default::default()
+        })
+        .on_conflict(
+            sea_query::OnConflict::column(file_state::Column::FileId)
+                .update_column(file_state::Column::FileName)
+                .to_owned(),
+        )
+        .exec(&self.db)
+        .await?;
+        info!(">> DB: set file {} name to {}", file_id, file_name);
         Ok(())
     }
 
-    /// insert msg_id for file_id in chat_id
-    pub async fn insert_or_replace_files(
+    pub(super) async fn get_transport_state(&self, file_id: String) -> Result<TransportState> {
+        match file_state::Entity::find_by_id(file_id)
+            .one(&self.db)
+            .await?
+        {
+            Some(m) => Ok(m.transport_state.into()),
+            None => Err(anyhow::anyhow!("File not found")),
+        }
+    }
+
+    pub(super) async fn set_transport_state(
         &self,
-        chat_id: ChatId,
-        file_id: &str,
-        msg_id: MessageId,
+        file_id: impl AsRef<str>,
+        tranport_state: TransportState,
     ) -> Result<()> {
-        query("INSERT OR REPLACE INTO files (chat_id, file_id, msg_id) VALUES (?, ?, ?)")
-            .bind(chat_id.0)
-            .bind(file_id)
-            .bind(msg_id.0)
-            .execute(&self.db)
-            .await
-            .context("Failed to insert file")?;
+        file_state::Entity::insert(file_state::ActiveModel {
+            file_id: Set(file_id.as_ref().to_string()),
+            transport_state: Set(tranport_state.to_string()),
+            ..Default::default()
+        })
+        .on_conflict(
+            sea_query::OnConflict::column(file_state::Column::FileId)
+                .update_column(file_state::Column::TransportState)
+                .to_owned(),
+        )
+        .exec(&self.db)
+        .await?;
+        info!(
+            ">> DB: set transport state {} to {}",
+            file_id.as_ref(),
+            tranport_state
+        );
         Ok(())
     }
 
-    /// insert or replace path for file_id
-    pub async fn insert_or_replace_path(&self, file_id: &str, path: &str) -> Result<()> {
-        query("INSERT OR REPLACE INTO paths (file_id, path) VALUES (?, ?)")
-            .bind(file_id)
-            .bind(path)
-            .execute(&self.db)
-            .await
-            .context("Failed to insert or replace path")?;
-        Ok(())
+    pub(super) async fn get_file_id_by_handle(&self, handle: (i64, i32)) -> Result<Option<String>> {
+        match file_handle::Entity::find_by_id(handle)
+            .one(&self.db)
+            .await?
+        {
+            Some(m) => Ok(Some(m.file_id)),
+            None => Ok(None),
+        }
+    }
+
+    pub(super) async fn get_file_state_by_handle(&self, handle: (i64, i32)) -> Result<FileState> {
+        let txn = self.db.begin().await?;
+        let file_id = match file_handle::Entity::find_by_id(handle).one(&txn).await? {
+            Some(m) => m.file_id,
+            None => return Err(anyhow::anyhow!("File not found")),
+        };
+        let state = match file_state::Entity::find_by_id(file_id).one(&txn).await? {
+            Some(m) => m.state.into(),
+            None => return Err(anyhow::anyhow!("File not found")),
+        };
+        txn.commit().await?;
+        Ok(state)
+    }
+
+    pub(super) async fn set_file_state_by_handle(
+        &self,
+        handle: (i64, i32),
+        state: FileState,
+    ) -> Result<Option<(FileState, String)>> {
+        let txn = self.db.begin().await?;
+        let file_id = match file_handle::Entity::find_by_id(handle).one(&txn).await? {
+            Some(m) => m.file_id,
+            None => return Err(anyhow::anyhow!("File not found")),
+        };
+        let old_state = file_state::Entity::find_by_id(file_id.to_owned())
+            .one(&txn)
+            .await?
+            .map(|m| (m.state.into(), m.file_name));
+        file_state::Entity::insert(file_state::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            state: Set(state.to_string()),
+            ..Default::default()
+        })
+        .on_conflict(
+            sea_query::OnConflict::column(file_state::Column::FileId)
+                .update_column(file_state::Column::State)
+                .to_owned(),
+        )
+        .exec(&txn)
+        .await?;
+        txn.commit().await?;
+        info!(
+            ">> DB: set file {} state from {:?} to {}",
+            file_id, old_state, state
+        );
+        Ok(old_state)
+    }
+
+    /// Set file handle for a chat message, return the old handle if exists
+    pub(super) async fn set_file_handle(
+        &self,
+        handle: (i64, i32),
+        file_id: String,
+    ) -> Result<Option<(i64, i32)>> {
+        let txn = self.db.begin().await?;
+
+        // insert file state if not exists, foreign key constraint
+        file_state::Entity::insert(file_state::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            ..Default::default()
+        })
+        .exec(&txn)
+        .await
+        .ok();
+
+        let result = match file_handle::Entity::find()
+            .filter(file_handle::Column::ChatId.eq(handle.0))
+            .filter(file_handle::Column::FileId.eq(file_id.to_owned()))
+            .one(&txn)
+            .await?
+        {
+            Some(m) if m.msg_id != handle.1 => {
+                let old_chat_id = m.chat_id;
+                let old_msg_id = m.msg_id;
+                file_handle::Entity::delete(file_handle::ActiveModel {
+                    chat_id: Set(old_chat_id),
+                    msg_id: Set(old_msg_id),
+                    ..Default::default()
+                })
+                .exec(&txn)
+                .await?;
+                let mut m: file_handle::ActiveModel = m.into();
+                m.msg_id = Set(handle.1);
+                file_handle::Entity::insert(m).exec(&txn).await?;
+                Some((old_chat_id, old_msg_id))
+            }
+            Some(_) => None,
+            None => {
+                file_handle::Entity::insert(file_handle::ActiveModel {
+                    chat_id: Set(handle.0),
+                    msg_id: Set(handle.1),
+                    file_id: Set(file_id.to_owned()),
+                })
+                .exec(&txn)
+                .await?;
+                None
+            }
+        };
+        txn.commit().await?;
+        info!(">> DB: set file {} handle {:?}", file_id, handle);
+        Ok(result)
     }
 }

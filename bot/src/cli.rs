@@ -6,12 +6,8 @@ use crate::{
 use anyhow::{Context as _, Result, anyhow};
 use clap::Parser;
 use log::info;
-use std::{
-    collections::HashSet,
-    path::PathBuf,
-    process::Stdio,
-    sync::{Arc, RwLock, atomic::AtomicBool},
-};
+use parking_lot::RwLock;
+use std::{collections::HashSet, path::PathBuf, process::Stdio, sync::Arc};
 use teloxide::{Bot, types::UserId};
 
 #[derive(Parser)]
@@ -38,17 +34,37 @@ pub struct Cli {
 }
 
 fn init() -> Result<()> {
+    #[cfg(debug_assertions)]
     pretty_env_logger::env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .filter_module("hyper", log::LevelFilter::Info)
         .filter_module("sqlx", log::LevelFilter::Info)
         .filter_module("reqwest", log::LevelFilter::Info)
+        .format_timestamp(None)
+        .init();
+    #[cfg(not(debug_assertions))]
+    pretty_env_logger::env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .filter_module("hyper", log::LevelFilter::Info)
+        .filter_module("sqlx", log::LevelFilter::Warn)
+        .filter_module("reqwest", log::LevelFilter::Info)
+        .format_module_path(false)
         .init();
     dotenv::dotenv().ok();
-    info!(
-        "TELOXIDE_TOKEN: {}",
-        std::env::var("TELOXIDE_TOKEN").context("TELOXIDE_TOKEN unset")?
-    );
+    // mask token
+    let token = std::env::var("TELOXIDE_TOKEN")
+        .context("TELOXIDE_TOKEN unset")?
+        .chars()
+        .enumerate()
+        .fold("".to_string(), |mut acc, (i, c)| {
+            if i < 5 {
+                acc.push(c);
+            } else {
+                acc.push('*');
+            }
+            acc
+        });
+    info!(">> INIT: TELOXIDE_TOKEN: {}", token);
     Ok(())
 }
 
@@ -64,7 +80,7 @@ impl Cli {
                 local_server: { args.local_server_url.is_some() },
                 container_manager: {
                     if let Some(c) = &args.container_manager {
-                        info!("Checking container manager");
+                        info!(">> INIT: checking container manager");
                         if !std::process::Command::new(c)
                             .args([
                                 "logs",
@@ -78,7 +94,7 @@ impl Cli {
                             .success()
                         {
                             return Err(anyhow!(
-                                "Container check not pass: invalid container manager or bad container"
+                                "Container check not pass: invalid container manager or unsupport container"
                             ));
                         }
                     }
@@ -96,33 +112,25 @@ impl Cli {
                     }
                     allow_users
                 },
-                fav_dir: {
-                    let fav_dir = args.output.join("favorite");
-                    std::fs::create_dir_all(&fav_dir)?;
-                    fav_dir
+                output_dir: {
+                    std::fs::create_dir_all(&args.output)?;
+                    args.output
                 },
-                trash_dir: {
-                    let trash_dir = args.output.join("trash");
-                    std::fs::create_dir_all(&trash_dir)?;
-                    trash_dir
-                },
-                output_dir: args.output,
                 fav_score_limit: args.fav_score_limit,
                 delete_score_limit: args.delete_score_limit,
-                syncing: AtomicBool::new(true),
             }),
         };
-        info!("Context: {}", context);
-        let storage = MyStorage::new(format!("{}/data.db", context.output_dir.display())).await;
-        let bot = Bot::from_env();
+        info!(">> INIT: {}", context);
+        let mut bot = Bot::from_env();
         if let Some(url) = args.local_server_url {
-            Ok((
-                bot.set_api_url(url.parse().context("Failed to parse local server url")?),
-                context,
-                storage,
-            ))
-        } else {
-            Ok((bot, context, storage))
+            bot = bot.set_api_url(url.parse().context("Failed to parse local server url")?);
         }
+        let storage = MyStorage::new(
+            format!("sqlite://{}/data.db?mode=rwc", context.output_dir.display()),
+            bot.clone(), // used to download files
+            context.clone(),
+        )
+        .await?;
+        Ok((bot, context, storage))
     }
 }
