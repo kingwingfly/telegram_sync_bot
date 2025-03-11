@@ -54,7 +54,8 @@ impl MyStorage {
 }
 
 impl MyStorage {
-    pub async fn add(&self, file_id: FileId, file_name: FileName) -> Result<TransportHandle> {
+    /// add a download task, return a handle
+    pub async fn add_task(&self, file_id: FileId, file_name: FileName) -> Result<TransportHandle> {
         if matches!(
             self.db.get_transport_state(&file_id).await,
             Ok(TransportState::Completed)
@@ -70,12 +71,36 @@ impl MyStorage {
             }
             db.set_transport_state(file_id.clone(), handle_c.get_state())
                 .await?;
-            handle_c.cancelled().await;
-            db.set_transport_state(file_id, handle_c.get_state())
+            db.set_transport_state(file_id, handle_c.result().await)
                 .await?;
             Ok(())
         }));
         Ok(handle)
+    }
+
+    /// cancel a download task
+    pub async fn cancel_task_by_handle(&self, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
+        match self.db.get_file_id_by_handle((chat_id.0, msg_id.0)).await? {
+            Some(file_id) => {
+                self.downloader.cancel(file_id);
+                Ok(())
+            }
+            None => Err(anyhow!("No such handle")),
+        }
+    }
+
+    /// set file_handle for file_id, return old handle if exists
+    pub async fn set_file_handle(
+        &self,
+        chat_id: ChatId,
+        msg_id: MessageId,
+        file_id: FileId,
+    ) -> Result<Option<(ChatId, MessageId)>> {
+        let old_handle = self
+            .db
+            .set_file_handle((chat_id.0, msg_id.0), file_id)
+            .await?;
+        Ok(old_handle.map(|(chat_id, msg_id)| (ChatId(chat_id), MessageId(msg_id))))
     }
 }
 

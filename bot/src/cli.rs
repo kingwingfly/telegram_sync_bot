@@ -10,7 +10,7 @@ use std::{
     collections::HashSet,
     path::PathBuf,
     process::Stdio,
-    sync::{Arc, RwLock, atomic::AtomicBool},
+    sync::{Arc, RwLock},
 };
 use teloxide::{Bot, types::UserId};
 
@@ -128,7 +128,7 @@ impl Cli {
         }
         let storage = MyStorage::new(
             format!("sqlite://{}/data.db?mode=rwc", context.output_dir.display()),
-            bot.clone(),
+            bot.clone(), // used to download files
             context.clone(),
         )
         .await?;

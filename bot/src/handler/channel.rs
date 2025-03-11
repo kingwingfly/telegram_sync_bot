@@ -15,8 +15,8 @@ pub fn channel_post_handler() -> UpdateHandler<anyhow::Error> {
         .endpoint(
             async |bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage| {
                 let (chat_id, msg_id) = (msg.chat.id, msg.id);
-                if storage.get_chat_state(chat_id).await? == ChatState::Paused {
-                    bot.send_message(chat_id, "Paused").await?;
+                if matches!(storage.get_chat_state(chat_id).await?, ChatState::Paused) {
+                    bot.send_message(chat_id, "Sync paused").await?;
                     dialogue.exit().await?;
                     return Ok(());
                 }
@@ -24,6 +24,7 @@ pub fn channel_post_handler() -> UpdateHandler<anyhow::Error> {
                 if let MessageKind::Common(common_msg) = msg.kind {
                     if let Some((file_id, file_name)) = match common_msg.media_kind {
                         MediaKind::Document(document) => {
+                            // gif will be handled here too
                             let file_id = document.document.file.id;
                             let file_name = document.document.file_name.unwrap_or(file_id.clone());
                             Some((file_id, file_name))
@@ -46,7 +47,14 @@ pub fn channel_post_handler() -> UpdateHandler<anyhow::Error> {
                         }
                         _ => None,
                     } {
-                        let handle = storage.add(file_id, file_name).await?;
+                        if let Some((_old_chat_id, old_msg_id)) = storage
+                            .set_file_handle(chat_id, msg_id, file_id.clone())
+                            .await?
+                        {
+                            debug_assert_eq!(_old_chat_id, chat_id, "chat_id mismatch");
+                            bot.delete_message(chat_id, old_msg_id).await?;
+                        }
+                        let handle = storage.add_task(file_id, file_name).await?;
                         tokio::spawn(async move {
                             let emoji = match handle.result().await {
                                 TransportState::Completed => "👌",

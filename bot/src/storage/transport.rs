@@ -43,14 +43,6 @@ impl TransportHandle {
         self.cancel.cancelled().await;
         self.get_state()
     }
-
-    pub(super) fn is_cancelled(&self) -> bool {
-        self.cancel.is_cancelled()
-    }
-
-    pub fn cancelled(&self) -> impl Future<Output = ()> {
-        self.cancel.cancelled()
-    }
 }
 
 pub type FileId = String;
@@ -139,7 +131,7 @@ impl Downloader {
                                             }
                                             handle.cancel(); // when downloading, await cancel.cancelled() avoiding loop checking
                                         },
-                                        _ = handle.cancelled() => {
+                                        _ = handle.cancel.cancelled() => {
                                             handle.set_state(TransportState::Cancelled);
                                         },
                                     };
@@ -178,19 +170,36 @@ impl Downloader {
     pub(super) fn add(&self, file_id: FileId, file_name: FileName) -> TransportHandle {
         match self.downloads.read().unwrap().get(&file_id) {
             // the ReadGuard is dropped here only with Rust 2024
-            Some(handle) if !handle.is_cancelled() => handle.clone(),
+            Some(handle)
+                if matches!(
+                    handle.get_state(),
+                    TransportState::Downloading
+                        | TransportState::Pending
+                        | TransportState::Completed
+                ) =>
+            {
+                handle.clone()
+            }
             _ => {
                 let handle = TransportHandle::new();
                 self.tx
                     .send(Message::Add(file_id.clone(), file_name, handle.clone()))
                     .unwrap();
-                self.downloads
+                if let Some(old_handle) = self
+                    .downloads
                     .write()
                     .unwrap()
-                    .insert(file_id, handle.clone());
+                    .insert(file_id, handle.clone())
+                {
+                    old_handle.cancel();
+                }
                 handle
             }
         }
+    }
+
+    pub(super) fn cancel(&self, file_id: FileId) {
+        self.tx.send(Message::Cancel(file_id)).unwrap();
     }
 
     fn shutdown(&self) {
