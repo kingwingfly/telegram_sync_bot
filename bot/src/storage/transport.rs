@@ -3,10 +3,11 @@ use crate::context::Context;
 use crate::utils::cp_from_container;
 use anyhow::Result;
 use log::info;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::mpsc::{Sender, channel};
-use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use teloxide::Bot;
 use teloxide::net::Download as _;
@@ -29,11 +30,11 @@ impl TransportHandle {
     }
 
     pub fn get_state(&self) -> TransportState {
-        *self.state.read().unwrap()
+        *self.state.read()
     }
 
     fn set_state(&self, state: TransportState) {
-        *self.state.write().unwrap() = state;
+        *self.state.write() = state;
     }
 
     pub(super) fn cancel(&self) {
@@ -49,11 +50,11 @@ impl TransportHandle {
 pub type FileId = String;
 pub type FileName = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Downloader {
-    downloads: Arc<RwLock<HashMap<FileId, TransportHandle>>>,
+    downloads: RwLock<HashMap<FileId, TransportHandle>>,
     tx: Sender<Message>,
-    jh: Arc<RwLock<Option<JoinHandle<()>>>>,
+    jh: RwLock<Option<JoinHandle<()>>>,
 }
 
 enum Message {
@@ -77,7 +78,7 @@ impl Downloader {
                             Message::Add(file_id, file_name, handle) => {
                                 let bot = bot.clone();
                                 let context = context.clone();
-                                if let Some(old) = cancels.write().unwrap().insert(file_id.clone(), handle.cancel.clone()) {
+                                if let Some(old) = cancels.write().insert(file_id.clone(), handle.cancel.clone()) {
                                     info!(">> DOWNLOADER: dumplicated, cancel old task {}", file_id);
                                     old.cancel();
                                 };
@@ -140,17 +141,17 @@ impl Downloader {
                                             handle.set_state(TransportState::Cancelled);
                                         },
                                     };
-                                    cancels_c.write().unwrap().remove(&file_id);
+                                    cancels_c.write().remove(&file_id);
                                 });
                             }
                             Message::Cancel(k) => {
-                                if let Some(cancel) = cancels.write().unwrap().remove(&k) {
+                                if let Some(cancel) = cancels.write().remove(&k) {
                                     cancel.cancel();
                                 }
                             }
                             Message::Shutdown => {
                                 info!(">> DOWNLOADER: shutdown");
-                                for (_, cancel) in cancels.read().unwrap().iter() {
+                                for (_, cancel) in cancels.read().iter() {
                                     cancel.cancel();
                                 }
                                 break;
@@ -162,20 +163,20 @@ impl Downloader {
         let tx_c = tx.clone();
         let _listener = tokio::spawn(async move {
             tokio::signal::ctrl_c().await?;
-            tx_c.send(Message::Shutdown).unwrap();
+            tx_c.send(Message::Shutdown).ok();
             Ok::<_, anyhow::Error>(())
         });
         Downloader {
-            downloads: Arc::new(RwLock::new(HashMap::new())),
+            downloads: RwLock::new(HashMap::new()),
             tx,
-            jh: Arc::new(RwLock::new(Some(jh))),
+            jh: RwLock::new(Some(jh)),
         }
     }
 
     #[must_use = "Caller should refresh db state with this handle"]
     pub(super) fn add(&self, file_id: FileId, file_name: FileName) -> TransportHandle {
-        match self.downloads.read().unwrap().get(&file_id) {
-            // the ReadGuard is dropped here only with Rust 2024
+        let read = self.downloads.read();
+        match read.get(&file_id).cloned() {
             Some(handle)
                 if matches!(
                     handle.get_state(),
@@ -184,19 +185,15 @@ impl Downloader {
                         | TransportState::Completed
                 ) =>
             {
-                handle.clone()
+                handle
             }
             _ => {
+                drop(read);
                 let handle = TransportHandle::new();
                 self.tx
                     .send(Message::Add(file_id.clone(), file_name, handle.clone()))
                     .unwrap();
-                if let Some(old_handle) = self
-                    .downloads
-                    .write()
-                    .unwrap()
-                    .insert(file_id, handle.clone())
-                {
+                if let Some(old_handle) = self.downloads.write().insert(file_id, handle.clone()) {
                     old_handle.cancel();
                 }
                 handle
@@ -209,8 +206,8 @@ impl Downloader {
     }
 
     fn shutdown(&self) {
-        self.tx.send(Message::Shutdown).unwrap();
-        if let Some(jh) = self.jh.write().unwrap().take() {
+        self.tx.send(Message::Shutdown).ok();
+        if let Some(jh) = self.jh.write().take() {
             jh.join().unwrap();
         }
     }

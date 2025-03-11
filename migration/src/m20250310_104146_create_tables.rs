@@ -1,4 +1,3 @@
-use log::info;
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
@@ -27,30 +26,27 @@ impl MigrationTrait for Migration {
                     .on_update(ForeignKeyAction::NoAction), // file_id in file_state hardly change
             )
             .to_owned();
-        info!(
-            "create table: {}",
-            file_handle.to_string(SqliteQueryBuilder)
-        );
         manager.create_table(file_handle).await?;
+
         let index = Index::create()
             .table(FileHandle::Table)
             .name("file_id_index")
             .col(FileHandle::FileID)
             .to_owned();
-        info!("create table: {}", index.to_string(SqliteQueryBuilder));
         manager.create_index(index).await?;
 
         let file_state = Table::create()
             .table(FileState::Table)
             .if_not_exists()
             .col(string(FileState::FileID).primary_key())
+            .col(string(FileState::FileName).default(Expr::col(FileState::FileID)))
             .col(
                 enumeration(
                     FileState::State,
                     Alias::new("state"),
                     [Alias::new("Fav"), Alias::new("Trash"), Alias::new("Normal")],
                 )
-                .default("NotReady"),
+                .default("Normal"),
             )
             .col(
                 enumeration(
@@ -68,7 +64,6 @@ impl MigrationTrait for Migration {
                 .default("Pending"),
             )
             .to_owned();
-        info!("create table: {}", file_state.to_string(SqliteQueryBuilder));
         manager.create_table(file_state).await?;
 
         let chat_state = Table::create()
@@ -92,7 +87,6 @@ impl MigrationTrait for Migration {
                 }),
             )
             .to_owned();
-        info!("create table: {}", chat_state.to_string(SqliteQueryBuilder));
         manager.create_table(chat_state).await?;
 
         Ok(())
@@ -124,6 +118,7 @@ enum FileHandle {
 enum FileState {
     Table, // this is a special case; will be mapped to `filestate`
     FileID,
+    FileName,
     State,
     TransportState,
 }

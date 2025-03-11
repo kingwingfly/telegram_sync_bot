@@ -50,7 +50,7 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
             }),
         )
         .branch(case![Command::BypassKey].endpoint(async |ctx: Context| {
-            info!(">> BOT: BypassKey: {}", ctx.bypasskey.read().unwrap());
+            info!(">> BOT: BypassKey: {}", ctx.bypasskey.read());
             Ok(())
         }))
         .branch(
@@ -92,12 +92,11 @@ async fn auth(bot: &Bot, dialogue: &MyDialogue, msg: &Message, ctx: &Context) ->
                         ..
                     }),
                 ..
-            } if matches!(text.split_once(" "), Some((_, key)) if key == *ctx.bypasskey.read().unwrap()) =>
-            {
+            } if matches!(text.split_once(" "), Some((_, key)) if key == *ctx.bypasskey.read()) => {
                 // renew bypass_pwd
                 let new = gen_key();
                 info!(">> BOT: New bypasskey: {}", new);
-                *ctx.bypasskey.write().unwrap() = new;
+                *ctx.bypasskey.write() = new;
                 Ok(true)
             }
             _ => {

@@ -1,10 +1,7 @@
 use core::fmt;
+use parking_lot::RwLock;
 use std::ops::Deref;
-use std::{
-    collections::HashSet,
-    path::PathBuf,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 use teloxide::types::UserId;
 
 #[derive(Debug, Clone)]
@@ -27,8 +24,6 @@ pub struct ContextInner {
     pub delete_score_limit: i32,
 
     pub output_dir: PathBuf,
-    pub fav_dir: PathBuf,
-    pub trash_dir: PathBuf,
 }
 
 impl fmt::Display for Context {
@@ -37,13 +32,11 @@ impl fmt::Display for Context {
             .field("localserver", &self.local_server)
             .field("container_manager", &self.container_manager)
             .field("container_id", &self.container_id)
-            .field("bypasskey", &self.bypasskey.read().unwrap())
+            .field("bypasskey", &self.bypasskey.read())
             .field("bypass_users", &self.bypass_users)
             .field("fav", &format!("score >= {}", self.fav_score_limit))
             .field("delete", &format!("score < {}", self.delete_score_limit))
             .field("output_dir", &self.output_dir)
-            .field("fav_dir", &self.fav_dir)
-            .field("trash dir", &self.trash_dir)
             .finish()
     }
 }

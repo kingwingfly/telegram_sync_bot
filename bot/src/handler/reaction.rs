@@ -31,13 +31,13 @@ pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                         match emoji.as_str() {
                             "👍" | "❤" => {
                                 storage
-                                    .set_file_state_by_handle(handle, FileState::Fav)
+                                    .set_file_state_by_handle_and_link(handle, FileState::Fav)
                                     .await?;
                                 pin_msg(&bot, chat_id, msg_id).await?;
                             }
                             "👎" => {
                                 storage
-                                    .set_file_state_by_handle(handle, FileState::Trash)
+                                    .set_file_state_by_handle_and_link(handle, FileState::Trash)
                                     .await?;
                                 bot.delete_message(chat_id, msg_id).await?;
                                 storage.cancel_task_by_handle(chat_id, msg_id).await?;
@@ -51,7 +51,7 @@ pub fn reaction_handler() -> UpdateHandler<anyhow::Error> {
                     {
                         if matches!(emoji.as_str(), "👍" | "❤") {
                             storage
-                                .set_file_state_by_handle(handle, FileState::Normal)
+                                .set_file_state_by_handle_and_link(handle, FileState::Normal)
                                 .await?;
                             unpin_msg(&bot, chat_id, msg_id).await?;
                         }
@@ -107,13 +107,13 @@ pub fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
 
                     if score >= ctx.fav_score_limit {
                         storage
-                            .set_file_state_by_handle((chat_id, msg_id), FileState::Fav)
+                            .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Fav)
                             .await?;
                         pin_msg(&bot, chat_id, msg_id).await?;
                         info!("Fav: file-handle ({} {})", chat_id, msg_id);
                     } else if score < ctx.delete_score_limit {
                         storage
-                            .set_file_state_by_handle((chat_id, msg_id), FileState::Trash)
+                            .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Trash)
                             .await?;
                         bot.delete_message(chat_id, msg_id).await?;
                         storage.cancel_task_by_handle(chat_id, msg_id).await?;
@@ -121,7 +121,7 @@ pub fn reaction_count_handler() -> UpdateHandler<anyhow::Error> {
                         // do not need unpin deleted message
                     } else {
                         storage
-                            .set_file_state_by_handle((chat_id, msg_id), FileState::Normal)
+                            .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Normal)
                             .await?;
                         unpin_msg(&bot, chat_id, msg_id).await?;
                         info!("Unfav: file-handle ({} {})", chat_id, msg_id);

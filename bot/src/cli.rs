@@ -6,12 +6,8 @@ use crate::{
 use anyhow::{Context as _, Result, anyhow};
 use clap::Parser;
 use log::info;
-use std::{
-    collections::HashSet,
-    path::PathBuf,
-    process::Stdio,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+use std::{collections::HashSet, path::PathBuf, process::Stdio, sync::Arc};
 use teloxide::{Bot, types::UserId};
 
 #[derive(Parser)]
@@ -38,11 +34,21 @@ pub struct Cli {
 }
 
 fn init() -> Result<()> {
+    #[cfg(debug_assertions)]
     pretty_env_logger::env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .filter_module("hyper", log::LevelFilter::Info)
         .filter_module("sqlx", log::LevelFilter::Info)
         .filter_module("reqwest", log::LevelFilter::Info)
+        .format_timestamp(None)
+        .init();
+    #[cfg(not(debug_assertions))]
+    pretty_env_logger::env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .filter_module("hyper", log::LevelFilter::Info)
+        .filter_module("sqlx", log::LevelFilter::Warn)
+        .filter_module("reqwest", log::LevelFilter::Info)
+        .format_module_path(false)
         .init();
     dotenv::dotenv().ok();
     // mask token
@@ -106,17 +112,10 @@ impl Cli {
                     }
                     allow_users
                 },
-                fav_dir: {
-                    let fav_dir = args.output.join("favorite");
-                    std::fs::create_dir_all(&fav_dir)?;
-                    fav_dir
+                output_dir: {
+                    std::fs::create_dir_all(&args.output)?;
+                    args.output
                 },
-                trash_dir: {
-                    let trash_dir = args.output.join("trash");
-                    std::fs::create_dir_all(&trash_dir)?;
-                    trash_dir
-                },
-                output_dir: args.output,
                 fav_score_limit: args.fav_score_limit,
                 delete_score_limit: args.delete_score_limit,
             }),

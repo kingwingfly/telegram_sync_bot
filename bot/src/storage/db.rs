@@ -1,4 +1,3 @@
-use super::FileId;
 use super::state::*;
 use anyhow::Result;
 use entity::{chat_state, file_handle, file_state};
@@ -75,11 +74,25 @@ impl Db {
         Ok(new_state)
     }
 
-    pub(super) async fn get_transport_state(
-        &self,
-        file_id: impl AsRef<str>,
-    ) -> Result<TransportState> {
-        match file_state::Entity::find_by_id(file_id.as_ref().to_string())
+    pub(super) async fn set_file_name(&self, file_id: String, file_name: String) -> Result<()> {
+        file_state::Entity::insert(file_state::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            file_name: Set(file_name.to_owned()),
+            ..Default::default()
+        })
+        .on_conflict(
+            sea_query::OnConflict::column(file_state::Column::FileId)
+                .update_column(file_state::Column::FileName)
+                .to_owned(),
+        )
+        .exec(&self.db)
+        .await?;
+        info!(">> DB: set file {} name to {}", file_id, file_name);
+        Ok(())
+    }
+
+    pub(super) async fn get_transport_state(&self, file_id: String) -> Result<TransportState> {
+        match file_state::Entity::find_by_id(file_id)
             .one(&self.db)
             .await?
         {
@@ -113,7 +126,7 @@ impl Db {
         Ok(())
     }
 
-    pub(super) async fn get_file_id_by_handle(&self, handle: (i64, i32)) -> Result<Option<FileId>> {
+    pub(super) async fn get_file_id_by_handle(&self, handle: (i64, i32)) -> Result<Option<String>> {
         match file_handle::Entity::find_by_id(handle)
             .one(&self.db)
             .await?
@@ -141,12 +154,16 @@ impl Db {
         &self,
         handle: (i64, i32),
         state: FileState,
-    ) -> Result<()> {
+    ) -> Result<Option<(FileState, String)>> {
         let txn = self.db.begin().await?;
         let file_id = match file_handle::Entity::find_by_id(handle).one(&txn).await? {
             Some(m) => m.file_id,
             None => return Err(anyhow::anyhow!("File not found")),
         };
+        let old_state = file_state::Entity::find_by_id(file_id.to_owned())
+            .one(&txn)
+            .await?
+            .map(|m| (m.state.into(), m.file_name));
         file_state::Entity::insert(file_state::ActiveModel {
             file_id: Set(file_id.to_owned()),
             state: Set(state.to_string()),
@@ -160,8 +177,11 @@ impl Db {
         .exec(&txn)
         .await?;
         txn.commit().await?;
-        info!(">> DB: set file {} state to {}", file_id, state);
-        Ok(())
+        info!(
+            ">> DB: set file {} state from {:?} to {}",
+            file_id, old_state, state
+        );
+        Ok(old_state)
     }
 
     /// Set file handle for a chat message, return the old handle if exists
@@ -171,36 +191,38 @@ impl Db {
         file_id: String,
     ) -> Result<Option<(i64, i32)>> {
         let txn = self.db.begin().await?;
+
         // insert file state if not exists, foreign key constraint
         file_state::Entity::insert(file_state::ActiveModel {
             file_id: Set(file_id.to_owned()),
             ..Default::default()
         })
-        .on_conflict(
-            sea_query::OnConflict::column(file_state::Column::FileId)
-                .do_nothing()
-                .to_owned(),
-        )
         .exec(&txn)
-        .await?;
+        .await
+        .ok();
 
-        let result = match file_handle::Entity::find_by_id((handle.0, handle.1))
+        let result = match file_handle::Entity::find()
+            .filter(file_handle::Column::ChatId.eq(handle.0))
+            .filter(file_handle::Column::FileId.eq(file_id.to_owned()))
             .one(&txn)
             .await?
         {
-            Some(record) => {
-                let old_chat_id = record.chat_id;
-                let old_msg_id = record.msg_id;
-                if record.msg_id != handle.1 {
-                    file_handle::Entity::update(file_handle::ActiveModel {
-                        msg_id: Set(handle.1),
-                        ..record.into()
-                    })
-                    .exec(&txn)
-                    .await?;
-                }
-                Ok(Some((old_chat_id, old_msg_id)))
+            Some(m) if m.msg_id != handle.1 => {
+                let old_chat_id = m.chat_id;
+                let old_msg_id = m.msg_id;
+                file_handle::Entity::delete(file_handle::ActiveModel {
+                    chat_id: Set(old_chat_id),
+                    msg_id: Set(old_msg_id),
+                    ..Default::default()
+                })
+                .exec(&txn)
+                .await?;
+                let mut m: file_handle::ActiveModel = m.into();
+                m.msg_id = Set(handle.1);
+                file_handle::Entity::insert(m).exec(&txn).await?;
+                Some((old_chat_id, old_msg_id))
             }
+            Some(_) => None,
             None => {
                 file_handle::Entity::insert(file_handle::ActiveModel {
                     chat_id: Set(handle.0),
@@ -209,11 +231,11 @@ impl Db {
                 })
                 .exec(&txn)
                 .await?;
-                Ok(None)
+                None
             }
         };
         txn.commit().await?;
         info!(">> DB: set file {} handle {:?}", file_id, handle);
-        result
+        Ok(result)
     }
 }

@@ -14,6 +14,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
 pub struct Model {
     pub file_id: String,
+    pub file_name: String,
     pub state: String,
     pub transport_state: String,
 }
@@ -21,6 +22,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     FileId,
+    FileName,
     State,
     TransportState,
 }
@@ -47,6 +49,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::FileId => ColumnType::String(StringLen::None).def(),
+            Self::FileName => ColumnType::String(StringLen::None).def(),
             Self::State => ColumnType::custom("enum_text").def(),
             Self::TransportState => ColumnType::custom("enum_text").def(),
         }

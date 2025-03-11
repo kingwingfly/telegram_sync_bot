@@ -4,26 +4,26 @@ use super::{db::Db, state::*, transport::Downloader};
 use crate::context::Context;
 use anyhow::{Result, anyhow};
 use log::info;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::types::{ChatId, MessageId};
-use tokio::task::JoinHandle;
+use tokio::fs;
 
 #[derive(Debug, Clone)]
 pub struct MyStorage {
     db: Db,
-    downloader: Downloader,
-    jhs: Arc<RwLock<Vec<JoinHandle<Result<()>>>>>,
+    downloader: Arc<Downloader>,
+    context: Context,
 }
 
 impl MyStorage {
     pub async fn new(database_url: impl AsRef<str>, bot: Bot, context: Context) -> Result<Self> {
         let db = Db::new(database_url).await?;
-        let downloader = Downloader::new(bot, context);
+        let downloader = Arc::new(Downloader::new(bot, context.clone()));
         Ok(Self {
             db,
             downloader,
-            jhs: Arc::new(RwLock::new(Vec::new())),
+            context,
         })
     }
 }
@@ -43,31 +43,61 @@ impl MyStorage {
             .await
     }
 
-    pub async fn set_file_state_by_handle(
+    /// 1. set file state by handle
+    /// 2. hard link file to correct directory
+    pub async fn set_file_state_by_handle_and_link(
         &self,
         handle: (ChatId, MessageId),
         state: FileState,
     ) -> Result<()> {
-        self.db
+        let Some((old_state, file_name)) = self
+            .db
             .set_file_state_by_handle((handle.0.0, handle.1.0), state)
-            .await
+            .await?
+        else {
+            return Ok(());
+        };
+        let from = self.context.output_dir.join(&file_name);
+        let dir = self
+            .context
+            .output_dir
+            .join(handle.0.to_string())
+            .join(state.to_string().to_lowercase());
+        let old = self
+            .context
+            .output_dir
+            .join(handle.0.to_string())
+            .join(old_state.to_string().to_lowercase())
+            .join(&file_name);
+        let to = dir.join(&file_name);
+        fs::create_dir_all(&dir).await?;
+        fs::hard_link(&from, &to).await?;
+        fs::remove_file(&old).await.ok();
+        Ok(())
     }
 }
 
 impl MyStorage {
     /// add a download task, return a handle
-    pub async fn add_task(&self, file_id: FileId, file_name: FileName) -> Result<TransportHandle> {
+    pub async fn add_task(
+        &self,
+        file_id: FileId,
+        file_name: FileName,
+    ) -> Result<Option<TransportHandle>> {
         info!(">> Storage: Add new task {}", file_name);
         if matches!(
-            self.db.get_transport_state(&file_id).await,
+            self.db.get_transport_state(file_id.to_string()).await,
             Ok(TransportState::Completed)
         ) {
-            return Err(anyhow!("Dumplcated save"));
+            return Ok(None);
         }
+        self.db
+            .set_file_name(file_id.clone(), file_name.clone())
+            .await?;
         let handle = self.downloader.add(file_id.clone(), file_name);
         let db = self.db.clone();
         let handle_c = handle.clone();
-        self.jhs.write().unwrap().push(tokio::spawn(async move {
+        tokio::spawn(async move {
             while TransportState::Pending == handle_c.get_state() {
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
             }
@@ -75,9 +105,9 @@ impl MyStorage {
                 .await?;
             db.set_transport_state(file_id, handle_c.result().await)
                 .await?;
-            Ok(())
-        }));
-        Ok(handle)
+            Ok::<_, anyhow::Error>(())
+        });
+        Ok(Some(handle))
     }
 
     /// cancel a download task
@@ -104,13 +134,5 @@ impl MyStorage {
             .set_file_handle((chat_id.0, msg_id.0), file_id)
             .await?;
         Ok(old_handle.map(|(chat_id, msg_id)| (ChatId(chat_id), MessageId(msg_id))))
-    }
-}
-
-impl Drop for MyStorage {
-    fn drop(&mut self) {
-        for jh in self.jhs.write().unwrap().iter() {
-            jh.abort();
-        }
     }
 }

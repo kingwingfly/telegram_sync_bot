@@ -89,9 +89,9 @@ pub enum FileState {
 impl<S: AsRef<str>> From<S> for FileState {
     fn from(s: S) -> Self {
         match s.as_ref() {
+            "Normal" => FileState::Normal,
             "Fav" => FileState::Fav,
             "Trash" => FileState::Trash,
-            "Normal" => FileState::Normal,
             _ => panic!("Unknown file state: {}", s.as_ref()),
         }
     }
