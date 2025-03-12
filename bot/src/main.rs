@@ -4,7 +4,14 @@ use tracing_subscriber::{filter, layer::SubscriberExt as _, util::SubscriberInit
 #[tokio::main]
 async fn main() {
     let filter = filter::Targets::new()
-        .with_target("telegram_sync_bot", Level::INFO)
+        .with_target(
+            "telegram_sync_bot",
+            if cfg!(debug_assertions) {
+                Level::DEBUG
+            } else {
+                Level::INFO
+            },
+        )
         .with_target("teloxide", Level::INFO);
     tracing_subscriber::registry()
         .with(

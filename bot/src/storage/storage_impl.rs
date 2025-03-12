@@ -7,7 +7,7 @@ use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::types::{ChatId, MessageId};
 use tokio::fs;
-use tracing::info;
+use tracing::{info, instrument};
 
 #[derive(Debug, Clone)]
 pub struct MyStorage {
@@ -46,6 +46,7 @@ impl MyStorage {
 
     /// 1. hard link file to correct directory
     /// 2. set file state by handle
+    #[instrument(level = "debug", fields(file_name, old_state))]
     pub async fn set_file_state_by_handle_and_link(
         &self,
         handle: (ChatId, MessageId),
@@ -56,36 +57,49 @@ impl MyStorage {
             .get_file_state_and_name_by_handle((handle.0.0, handle.1.0))
             .await?;
 
-        let dir = self
-            .context
-            .output_dir
-            .join(handle.0.to_string())
-            .join(state.to_string().to_lowercase());
-        fs::create_dir_all(&dir).await?;
+        tracing::Span::current().record("file_name", &file_name);
+        tracing::Span::current().record("old_state", old_state.to_string());
+
+        let dir = self.context.output_dir.join(handle.0.to_string());
+        let new_dir = dir.join(state.to_string().to_lowercase());
+        fs::create_dir_all(&new_dir).await?;
         let from = dir
-            .join(handle.0.to_string())
             .join(old_state.to_string().to_lowercase())
             .join(&file_name);
-        let to = dir.join(&file_name);
-        if fs::rename(&from, &to).await.is_err() {
-            let origin = self.context.output_dir.join(&file_name);
-            for _ in 0..32768 {
-                // waiting at most 27 hours or so
-                if fs::try_exists(&origin).await? {
-                    break;
-                }
-                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        let to = new_dir.join(&file_name);
+        match fs::rename(&from, &to).await {
+            Ok(_) => {
+                info!(
+                    ">> STORAGE: moved file from {} to {}",
+                    from.display(),
+                    to.display()
+                );
+                self.db
+                    .set_file_state_by_handle_returning_old_state((handle.0.0, handle.1.0), state)
+                    .await?;
             }
-            if !fs::try_exists(&origin).await? {
-                return Err(anyhow!("File not exists {}", file_name));
+            Err(_) => {
+                let origin = self.context.output_dir.join(&file_name);
+                let db = self.db.clone();
+                tokio::spawn(async move {
+                    for _ in 0..32768 {
+                        // waiting at most 27 hours or so, maybe is still downloading
+                        if fs::try_exists(&origin).await? {
+                            fs::hard_link(origin, to).await?;
+                            fs::remove_file(from).await.ok();
+                            db.set_file_state_by_handle_returning_old_state(
+                                (handle.0.0, handle.1.0),
+                                state,
+                            )
+                            .await?;
+                            return Ok::<_, anyhow::Error>(());
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    }
+                    Err(anyhow!("File not exists {}", file_name))
+                });
             }
-            fs::hard_link(&origin, &to).await?;
-            fs::remove_file(&from).await.ok();
         }
-
-        self.db
-            .set_file_state_by_handle_returning_old_state((handle.0.0, handle.1.0), state)
-            .await?;
 
         Ok(())
     }
@@ -120,7 +134,11 @@ impl MyStorage {
     }
 
     pub async fn delete_file_record(&self, file_id: FileId) -> Result<()> {
-        self.db.delte_file_record(file_id).await
+        self.db.delete_file_record(file_id).await
+    }
+
+    pub async fn delete_handle(&self, handle: (ChatId, MessageId)) -> Result<()> {
+        self.db.delete_handle((handle.0.0, handle.1.0)).await
     }
 }
 
@@ -149,8 +167,12 @@ impl MyStorage {
             while TransportState::Pending == handle_c.get_state() {
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
             }
-            db.set_transport_state(file_id.clone(), handle_c.get_state())
-                .await?;
+
+            if !handle_c.is_cancelled() {
+                db.set_transport_state(file_id.clone(), handle_c.get_state())
+                    .await?;
+            }
+
             db.set_transport_state(file_id, handle_c.result().await)
                 .await?;
             Ok::<_, anyhow::Error>(())
@@ -162,7 +184,6 @@ impl MyStorage {
     pub async fn cancel_task_by_handle(&self, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
         match self.db.get_file_id_by_handle((chat_id.0, msg_id.0)).await? {
             Some(file_id) => {
-                info!(">> Storage: Cancel task {}", file_id);
                 self.downloader.cancel(file_id);
                 Ok(())
             }

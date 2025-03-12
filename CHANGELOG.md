@@ -17,6 +17,8 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 - better file-state and transport-state management
 - improve with foreign key
 - sub command to delete file/msg from fs, db and telegram
+- split group msgs
+- TryMultipleTimers trait to lift success possibility
 
 ## [0.3.2] - 2025-03-10
 

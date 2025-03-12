@@ -41,6 +41,10 @@ impl TransportHandle {
         self.cancel.cancel();
     }
 
+    pub(super) fn is_cancelled(&self) -> bool {
+        self.cancel.is_cancelled()
+    }
+
     pub async fn result(&self) -> TransportState {
         self.cancel.cancelled().await;
         self.get_state()

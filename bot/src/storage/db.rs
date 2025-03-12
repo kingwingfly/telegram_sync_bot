@@ -267,7 +267,7 @@ impl Db {
         Ok(file_ids)
     }
 
-    pub(super) async fn delte_file_record(&self, file_id: String) -> Result<()> {
+    pub(super) async fn delete_file_record(&self, file_id: String) -> Result<()> {
         let txn = self.db.begin().await?;
         file_handle::Entity::delete_many()
             .filter(file_state::Column::FileId.eq(file_id.to_owned()))
@@ -278,6 +278,17 @@ impl Db {
             .await?;
         txn.commit().await?;
         info!(">> DB: delete file {}", file_id);
+        Ok(())
+    }
+
+    pub(super) async fn delete_handle(&self, (chat_id, msg_id): (i64, i32)) -> Result<()> {
+        file_handle::Entity::delete(file_handle::ActiveModel {
+            chat_id: Set(chat_id),
+            msg_id: Set(msg_id),
+            ..Default::default()
+        })
+        .exec(&self.db)
+        .await?;
         Ok(())
     }
 }

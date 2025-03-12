@@ -23,7 +23,7 @@ pub(super) async fn set_emoji(
 
 pub(super) async fn pin_msg(bot: &Bot, chat_id: ChatId, msg_id: MessageId) -> Result<()> {
     bot.pin_chat_message(chat_id, msg_id).await?;
-    info!(">> BOT: pinned message: {}", msg_id.0);
+    info!(">> BOT: pinned message ({}, {})", chat_id.0, msg_id.0);
     Ok(())
 }
 
@@ -31,6 +31,28 @@ pub(super) async fn unpin_msg(bot: &Bot, chat_id: ChatId, msg_id: MessageId) -> 
     let mut unpin = bot.unpin_chat_message(chat_id);
     unpin.message_id = Some(msg_id);
     unpin.await?;
-    info!(">> BOT: unpinned message: {}", msg_id.0);
+    info!(">> BOT: unpinned message ({}, {})", chat_id.0, msg_id.0);
     Ok(())
+}
+
+pub(super) trait TryMultipleTimes: Sized {
+    async fn try_multiple_times<T, E, Fut>(self, times: usize) -> Result<T, E>
+    where
+        Self: Fn() -> Fut,
+        Fut: IntoFuture<Output = Result<T, E>>,
+    {
+        for _ in 0..times - 1 {
+            if let Ok(t) = self().await {
+                return Ok(t);
+            }
+        }
+        self().await
+    }
+}
+
+impl<F, Fut, T, E> TryMultipleTimes for F
+where
+    F: Fn() -> Fut,
+    Fut: IntoFuture<Output = Result<T, E>>,
+{
 }
