@@ -16,7 +16,7 @@ pub struct ContextInner {
     pub container_id: Option<String>,
 
     pub bypasskey: RwLock<String>,
-    pub bypass_users: HashSet<UserId>,
+    pub bypass_users: Option<HashSet<UserId>>,
 
     // channel only: score >= fav_score_limit will be fav
     pub fav_score_limit: i32,

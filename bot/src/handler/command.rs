@@ -1,7 +1,6 @@
 use super::MyDialogue;
 use crate::{context::Context, storage::MyStorage, utils::gen_key};
 use anyhow::Result;
-use tracing::info;
 use teloxide::{
     Bot,
     dispatching::UpdateHandler,
@@ -11,6 +10,7 @@ use teloxide::{
     types::{MediaKind, MediaText, Message, MessageCommon, MessageKind},
     utils::command::BotCommands as _,
 };
+use tracing::info;
 
 #[derive(BotCommands, Clone)]
 #[command(
@@ -77,11 +77,11 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
 }
 
 async fn auth(bot: &Bot, dialogue: &MyDialogue, msg: &Message, ctx: &Context) -> Result<bool> {
-    if msg
-        .from
-        .as_ref()
-        .map(|user| ctx.bypass_users.contains(&user.id))
-        != Some(true)
+    if msg.from.as_ref().map(|user| {
+        ctx.bypass_users
+            .as_ref()
+            .is_some_and(|bypass_users| bypass_users.contains(&user.id))
+    }) != Some(true)
     {
         // check bypass_pwd
         match msg {

@@ -123,14 +123,20 @@ impl Cli {
                         container_id,
                         bypasskey: RwLock::new(gen_key()),
                         bypass_users: {
-                            let mut allow_users = HashSet::new();
-                            for id in std::env::var("BYPASS_USERS")
-                                .context("BYPASS_USERS unset")?
-                                .split(',')
-                            {
-                                allow_users.insert(UserId(id.parse()?));
+                            match std::env::var("BYPASS_USERS") {
+                                Ok(bypass_users) => {
+                                    let mut res = HashSet::new();
+                                    for id in bypass_users.split(',') {
+                                        info!(">> INIT: BYPASS_USERS: {}", bypass_users);
+                                        res.insert(UserId(id.parse()?));
+                                    }
+                                    Some(res)
+                                }
+                                Err(_) => {
+                                    info!(">> INIT: BYPASS_USERS unset");
+                                    None
+                                }
                             }
-                            allow_users
                         },
                         output_dir: {
                             std::fs::create_dir_all(&output)?;
@@ -176,7 +182,7 @@ impl Cli {
                         container_manager: None,
                         container_id: None,
                         bypasskey: RwLock::new(gen_key()),
-                        bypass_users: HashSet::new(),
+                        bypass_users: None,
                         output_dir: {
                             std::fs::create_dir_all(&output)?;
                             output
