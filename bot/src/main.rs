@@ -15,7 +15,7 @@ async fn main() {
         )
         .with(filter)
         .init();
-    if let Err(e) = telegram_sync_bot::run().await {
+    if let Err(e) = telegram_sync_bot::Cli::run().await {
         error!("Error: {:?}", e);
     }
 }

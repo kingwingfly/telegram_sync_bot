@@ -136,6 +136,20 @@ impl Db {
         }
     }
 
+    pub(super) async fn get_handle_by_file_id(
+        &self,
+        file_id: String,
+    ) -> Result<Option<(i64, i32)>> {
+        match file_handle::Entity::find()
+            .filter(file_handle::Column::FileId.eq(file_id))
+            .one(&self.db)
+            .await?
+        {
+            Some(m) => Ok(Some((m.chat_id, m.msg_id))),
+            None => Ok(None),
+        }
+    }
+
     pub(super) async fn get_file_state_and_name_by_handle(
         &self,
         handle: (i64, i32),
@@ -240,5 +254,35 @@ impl Db {
         txn.commit().await?;
         info!(">> DB: set file {} handle {:?}", file_id, handle);
         Ok(result)
+    }
+
+    pub(super) async fn get_file_ids_by_name(&self, file_name: String) -> Result<Vec<String>> {
+        let file_ids = file_state::Entity::find()
+            .filter(file_state::Column::FileName.eq(file_name))
+            .all(&self.db)
+            .await?
+            .into_iter()
+            .map(|m| m.file_id)
+            .collect();
+        Ok(file_ids)
+    }
+
+    pub(super) async fn delte_file_record(&self, file_id: String) -> Result<()> {
+        let txn = self.db.begin().await?;
+        file_handle::Entity::delete(file_handle::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            ..Default::default()
+        })
+        .exec(&txn)
+        .await?;
+        file_state::Entity::delete(file_state::ActiveModel {
+            file_id: Set(file_id.to_owned()),
+            ..Default::default()
+        })
+        .exec(&txn)
+        .await?;
+        txn.commit().await?;
+        info!(">> DB: delete file {}", file_id);
+        Ok(())
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "telegram_sync_bot"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2024"
 authors = ["Louis <836250617@qq.com>"]
 description = "A telegram bot to sync files to local server."
@@ -41,6 +41,8 @@ sea-orm-migration = { version = "1.1.0", features = [
 ] }
 # sync
 parking_lot = { version = "0.12.3" }
+# fs
+walkdir = { version = "2.5.0" }
 
 [features]
 default = []

@@ -86,6 +86,39 @@ impl MyStorage {
 
         Ok(())
     }
+
+    pub async fn get_handle_by_file_id(
+        &self,
+        file_id: FileId,
+    ) -> Result<Option<(ChatId, MessageId)>> {
+        Ok(self
+            .db
+            .get_handle_by_file_id(file_id)
+            .await?
+            .map(|(chat_id, msg_id)| (ChatId(chat_id), MessageId(msg_id))))
+    }
+
+    pub async fn get_file_ids_by_name(&self, file_name: String) -> Result<Vec<FileId>> {
+        self.db.get_file_ids_by_name(file_name).await
+    }
+
+    /// set file_handle for file_id, return old handle if exists
+    pub async fn set_file_handle(
+        &self,
+        chat_id: ChatId,
+        msg_id: MessageId,
+        file_id: FileId,
+    ) -> Result<Option<(ChatId, MessageId)>> {
+        let old_handle = self
+            .db
+            .set_file_handle((chat_id.0, msg_id.0), file_id)
+            .await?;
+        Ok(old_handle.map(|(chat_id, msg_id)| (ChatId(chat_id), MessageId(msg_id))))
+    }
+
+    pub async fn delete_file_record(&self, file_id: FileId) -> Result<()> {
+        self.db.delte_file_record(file_id).await
+    }
 }
 
 impl MyStorage {
@@ -132,19 +165,5 @@ impl MyStorage {
             }
             None => Err(anyhow!("No such handle")),
         }
-    }
-
-    /// set file_handle for file_id, return old handle if exists
-    pub async fn set_file_handle(
-        &self,
-        chat_id: ChatId,
-        msg_id: MessageId,
-        file_id: FileId,
-    ) -> Result<Option<(ChatId, MessageId)>> {
-        let old_handle = self
-            .db
-            .set_file_handle((chat_id.0, msg_id.0), file_id)
-            .await?;
-        Ok(old_handle.map(|(chat_id, msg_id)| (ChatId(chat_id), MessageId(msg_id))))
     }
 }

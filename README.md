@@ -63,29 +63,15 @@ Deploy:
 ```
 A telegram bot to sync files to local server.
 
-Usage: telegram_sync_bot [OPTIONS]
+Usage: telegram_sync_bot <COMMAND>
 
-Options:
-  -o, --output <OUTPUT>
-          The directory to store the files [default: .]
-  -l, --local-server-url <LOCAL_SERVER_URL>
-          The url if you are using a local server
-  -c, --container-manager <CONTAINER_MANAGER>
-          The container manager to use if deploying server in a container
-  -i, --container-id <CONTAINER_ID>
-          The container id or name if deploying server in a container
-  -f, --fav-score-limit <FAV_SCORE_LIMIT>
-          If score >= limit, fav a file, limit >= 0 (channel only) [default: 10]
-  -d, --delete-score-limit <DELETE_SCORE_LIMIT>
-          If score < limit, delete a file, limit <= 0 (channel only, e.g `-d-10`) [default: -10]
-  -h, --help
-          Print help
-  -V, --version
-          Print version
+Commands:
+  run     Run the bot
+  delete  Delete files by file_name in the output dir, and delete the record in the database, delete the message in the channel. The database should not be locked by other process, and there should not be any other bot instance.
 ```
 
 ```sh
-telegram_sync_bot -o /path/to/output
+telegram_sync_bot run -o /path/to/output
 ```
 
 ## No file size limit (local server)
@@ -168,7 +154,7 @@ After=network-online.target
 Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
-ExecStart=/usr/local/bin/telegram_sync_bot
+ExecStart=/usr/local/bin/telegram_sync_bot run
 Restart=on-failure
 Environment="TELOXIDE_TOKEN=<...>"
 Environment="BYPASS_USERS=<...>"
@@ -188,7 +174,7 @@ Type=simple
 User=<...>
 WorkingDirectory=</path/to/output>
 ExecStartPre=/usr/bin/podman restart server
-ExecStart=/usr/local/bin/telegram_sync_bot -l http://127.0.0.1:8081 -c podman -i server
+ExecStart=/usr/local/bin/telegram_sync_bot run -l http://127.0.0.1:8081 -c podman -i server
 ExecStop=/bin/bash -c 'kill -SIGINT $MAINPID; for i in {1..5}; do sleep 1; kill -0 $MAINPID 2>/dev/null || exit 0; done; kill -SIGKILL $MAINPID'
 ExecStopPost=/usr/bin/podman stop server
 Restart=on-failure
@@ -239,5 +225,3 @@ mkdir output
 sea-orm-cli migrate refresh
 sea-orm-cli generate entity --expanded-format -o bot/src/storage/entity/inner
 ```
-
-You can use `delete.sh` to delete files both in the database and the file system.

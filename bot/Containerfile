@@ -23,4 +23,4 @@ COPY --from=bot_builder /work/target/release/telegram_sync_bot /app/
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT ["/app/telegram_sync_bot", "-o", "output"]
+ENTRYPOINT ["/app/telegram_sync_bot", "run", "-o", "output"]

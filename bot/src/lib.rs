@@ -1,4 +1,3 @@
-mod bot;
 mod cli;
 mod context;
 mod handler;
@@ -9,4 +8,4 @@ mod utils;
 // instead, export from here to `migration`
 pub mod migration;
 
-pub use bot::run;
+pub use cli::Cli;
