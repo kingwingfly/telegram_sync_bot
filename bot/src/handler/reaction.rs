@@ -1,6 +1,6 @@
 use super::{
     MyDialogue,
-    utils::{pin_msg, unpin_msg},
+    utils::{TryMultipleTimes, pin_msg, unpin_msg},
 };
 use crate::{
     context::Context,
@@ -53,17 +53,22 @@ async fn reaction_handle(
                         storage
                             .set_file_state_by_handle_and_link(handle, FileState::Fav)
                             .await?;
-                        pin_msg(&bot, chat_id, msg_id).await?;
+                        (|| pin_msg(&bot, chat_id, msg_id))
+                            .try_multiple_times(3)
+                            .await?;
+                        info!(">> BOT: fav file-handle ({}, {})", chat_id, msg_id);
                     }
                     "👎" => {
                         storage.cancel_task_by_handle(chat_id, msg_id).await?;
-                        bot.delete_message(chat_id, msg_id).await?;
+                        (|| bot.delete_message(chat_id, msg_id))
+                            .try_multiple_times(3)
+                            .await?;
                         // do not need unpin deleted message
                         storage
                             .set_file_state_by_handle_and_link(handle, FileState::Trash)
                             .await?;
                         storage.delete_handle(handle).await?;
-                        info!(">> BOT: deleted disliked message");
+                        info!(">> BOT: deleted disliked message ({}, {})", chat_id, msg_id);
                     }
                     _ => {}
                 }
@@ -73,11 +78,16 @@ async fn reaction_handle(
                     storage
                         .set_file_state_by_handle_and_link(handle, FileState::Normal)
                         .await?;
-                    unpin_msg(&bot, chat_id, msg_id).await?;
+                    (|| unpin_msg(&bot, chat_id, msg_id))
+                        .try_multiple_times(3)
+                        .await?;
+                    info!(">> BOT: unfav file-handle ({}, {})", chat_id, msg_id);
                 }
             }
         } else {
-            bot.delete_message(chat_id, msg_id).await?;
+            (|| bot.delete_message(chat_id, msg_id))
+                .try_multiple_times(3)
+                .await?;
             info!(">> BOT: deleted out of control message");
         }
     }
@@ -133,28 +143,36 @@ async fn reaction_count_handle(
                 storage
                     .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Fav)
                     .await?;
-                pin_msg(&bot, chat_id, msg_id).await?;
-                info!("Fav: file-handle ({} {})", chat_id, msg_id);
+                (|| pin_msg(&bot, chat_id, msg_id))
+                    .try_multiple_times(3)
+                    .await?;
+                info!(">> BOT: fav file-handle ({} {})", chat_id, msg_id);
             } else if score < ctx.delete_score_limit {
                 storage.cancel_task_by_handle(chat_id, msg_id).await?;
-                bot.delete_message(chat_id, msg_id).await?;
+                (|| bot.delete_message(chat_id, msg_id))
+                    .try_multiple_times(3)
+                    .await?;
                 // do not need unpin deleted message
                 storage
                     .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Trash)
                     .await?;
                 storage.delete_handle((chat_id, msg_id)).await?;
-                info!("Deleted disliked message");
+                info!(">> BOT: deleted disliked message");
             } else {
                 storage
                     .set_file_state_by_handle_and_link((chat_id, msg_id), FileState::Normal)
                     .await?;
-                unpin_msg(&bot, chat_id, msg_id).await?;
-                info!("Unfav: file-handle ({} {})", chat_id, msg_id);
+                (|| unpin_msg(&bot, chat_id, msg_id))
+                    .try_multiple_times(3)
+                    .await?;
+                info!(">> BOT: unfav file-handle ({} {})", chat_id, msg_id);
             }
         } else {
             debug!("Unknown file state");
-            bot.delete_message(chat_id, msg_id).await?;
-            info!("Deleted out of control message");
+            (|| bot.delete_message(chat_id, msg_id))
+                .try_multiple_times(3)
+                .await?;
+            info!(">> BOT: deleted out of control message");
         }
     }
     Ok(())

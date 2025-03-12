@@ -85,8 +85,10 @@ impl MyStorage {
                     for _ in 0..32768 {
                         // waiting at most 27 hours or so, maybe is still downloading
                         if fs::try_exists(&origin).await? {
-                            fs::hard_link(origin, to).await?;
-                            fs::remove_file(from).await.ok();
+                            fs::hard_link(origin, &to).await?;
+                            if from != to {
+                                fs::remove_file(from).await.ok();
+                            }
                             db.set_file_state_by_handle_returning_old_state(
                                 (handle.0.0, handle.1.0),
                                 state,

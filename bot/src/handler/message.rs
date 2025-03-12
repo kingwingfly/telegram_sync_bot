@@ -93,14 +93,16 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
             }
             _ => None,
         } {
-            set_emoji(&bot, chat_id, msg_id, "🫡").await.ok();
-
             if let Some((old_chat_id, old_msg_id)) = storage
                 .set_file_handle(chat_id, msg_id, file_id.clone())
                 .await?
             {
                 debug_assert_eq!(old_chat_id, chat_id, "chat_id mismatch");
-                if bot.delete_message(chat_id, old_msg_id).await.is_ok() {
+                if (|| bot.delete_message(chat_id, old_msg_id))
+                    .try_multiple_times(3)
+                    .await
+                    .is_ok()
+                {
                     info!(">> BOT: deleted message: {}", old_msg_id);
                 }
             }
