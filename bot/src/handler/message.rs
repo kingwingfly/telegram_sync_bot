@@ -61,8 +61,9 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
                 .await?
             {
                 debug_assert_eq!(old_chat_id, chat_id, "chat_id mismatch");
-                bot.delete_message(chat_id, old_msg_id).await?;
-                info!(">> BOT: deleted message: {}", old_msg_id);
+                if bot.delete_message(chat_id, old_msg_id).await.is_ok() {
+                    info!(">> BOT: deleted message: {}", old_msg_id);
+                }
             }
             if chat_state == ChatState::PartiallyActive {
                 return Ok(());
