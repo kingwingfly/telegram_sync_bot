@@ -36,6 +36,9 @@ spec:
     - name: bot
       image: bot
       args:
+        - run
+        - -o
+        - /app/output
         - -l
         - http://server:8081
         - -f10

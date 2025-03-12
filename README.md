@@ -108,7 +108,7 @@ We provide three ways here:
 ```sh
 podman run --name server -itd --env-file .env -p 8081:8081 server
 
-telegram_sync_bot -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
+telegram_sync_bot run -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
 ```
 
 ### run as pod
@@ -129,7 +129,7 @@ podman run --pod sync_bot --name server -itd --env-file .env \
 podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
     -v /path/to/output:/app/output  \
     --mount cache:/app/data bot \
-    -l http://server:8081
+    run -o /app/output -l http://server:8081
 ```
 
 ### run with podman kube play
