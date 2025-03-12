@@ -50,7 +50,7 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
             }),
         )
         .branch(case![Command::BypassKey].endpoint(async |ctx: Context| {
-            info!(">> BOT: BypassKey: {}", ctx.bypasskey.read());
+            info!(">> BOT: BypassKey: /troggle {}", ctx.bypasskey.read());
             Ok(())
         }))
         .branch(
