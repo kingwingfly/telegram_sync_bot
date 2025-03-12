@@ -201,7 +201,7 @@ impl Cli {
                     if let Some((chat_id, msg_id)) =
                         storage.get_handle_by_file_id(file_id.to_owned()).await?
                     {
-                        bot.delete_message(chat_id, msg_id).send().await?;
+                        bot.delete_message(chat_id, msg_id).send().await.ok();
                         info!(">> BOT: delete message {:?}", (chat_id, msg_id));
                         storage.delete_file_record(file_id).await?;
                         for jh in WalkDir::new(&context.output_dir)

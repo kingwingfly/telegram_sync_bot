@@ -269,18 +269,13 @@ impl Db {
 
     pub(super) async fn delte_file_record(&self, file_id: String) -> Result<()> {
         let txn = self.db.begin().await?;
-        file_handle::Entity::delete(file_handle::ActiveModel {
-            file_id: Set(file_id.to_owned()),
-            ..Default::default()
-        })
-        .exec(&txn)
-        .await?;
-        file_state::Entity::delete(file_state::ActiveModel {
-            file_id: Set(file_id.to_owned()),
-            ..Default::default()
-        })
-        .exec(&txn)
-        .await?;
+        file_handle::Entity::delete_many()
+            .filter(file_state::Column::FileId.eq(file_id.to_owned()))
+            .exec(&txn)
+            .await?;
+        file_state::Entity::delete_by_id(file_id.to_owned())
+            .exec(&txn)
+            .await?;
         txn.commit().await?;
         info!(">> DB: delete file {}", file_id);
         Ok(())
