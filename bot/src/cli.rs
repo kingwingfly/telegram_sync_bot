@@ -124,15 +124,15 @@ impl Cli {
                         bypasskey: RwLock::new(gen_key()),
                         bypass_users: {
                             match std::env::var("BYPASS_USERS") {
-                                Ok(bypass_users) => {
+                                Ok(bypass_users) if !bypass_users.is_empty() => {
                                     let mut res = HashSet::new();
                                     for id in bypass_users.split(',') {
-                                        info!(">> INIT: BYPASS_USERS: {}", bypass_users);
+                                        info!(">> INIT: BYPASS_USER: {}", bypass_users);
                                         res.insert(UserId(id.parse()?));
                                     }
                                     Some(res)
                                 }
-                                Err(_) => {
+                                _ => {
                                     info!(">> INIT: BYPASS_USERS unset");
                                     None
                                 }
