@@ -12,7 +12,7 @@ use teloxide::{Bot, types::UserId};
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tokio::fs;
 use tokio::task::JoinHandle;
-use tracing::info;
+use tracing::{error, info};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
@@ -56,7 +56,7 @@ enum SubCmd {
         #[arg(short, long)]
         local_server_url: Option<String>,
         /// The file name to delete.
-        file_name: String,
+        file_names: Vec<String>,
     },
 }
 
@@ -168,7 +168,7 @@ impl Cli {
             SubCmd::Delete {
                 output,
                 local_server_url,
-                file_name,
+                file_names,
             } => {
                 let context = Context {
                     inner: Arc::new(ContextInner {
@@ -196,29 +196,33 @@ impl Cli {
                     context.clone(),
                 )
                 .await?;
-                let file_ids = storage.get_file_ids_by_name(file_name.to_owned()).await?;
-                for file_id in file_ids {
-                    if let Some((chat_id, msg_id)) =
-                        storage.get_handle_by_file_id(file_id.to_owned()).await?
-                    {
-                        bot.delete_message(chat_id, msg_id).send().await.ok();
-                        info!(">> BOT: delete message {:?}", (chat_id, msg_id));
-                        storage.delete_file_record(file_id).await.ok();
-                        for jh in WalkDir::new(&context.output_dir)
-                            .into_iter()
-                            .filter_map(|p| p.ok())
-                            .filter(|e| e.file_name().to_str() == Some(&file_name))
-                            .map(|e| {
-                                tokio::spawn(async move {
-                                    fs::remove_file(e.path()).await?;
-                                    info!(">> STOREAGE: delete file {}", e.path().display());
-                                    Ok::<_, anyhow::Error>(())
-                                })
-                            })
-                            .collect::<Vec<_>>()
-                            .into_iter()
+                for file_name in file_names {
+                    let file_ids = storage.get_file_ids_by_name(file_name.to_owned()).await?;
+                    for file_id in file_ids {
+                        if let Some((chat_id, msg_id)) =
+                            storage.get_handle_by_file_id(file_id.to_owned()).await?
                         {
-                            let _ = jh.await?;
+                            bot.delete_message(chat_id, msg_id).send().await.ok();
+                            info!(">> BOT: delete message {:?}", (chat_id, msg_id));
+                            storage.delete_file_record(file_id).await.ok();
+                            for jh in WalkDir::new(&context.output_dir)
+                                .into_iter()
+                                .filter_map(|p| p.ok())
+                                .filter(|e| e.file_name().to_str() == Some(&file_name))
+                                .map(|e| {
+                                    tokio::spawn(async move {
+                                        fs::remove_file(e.path()).await?;
+                                        info!(">> STOREAGE: delete file {}", e.path().display());
+                                        Ok::<_, anyhow::Error>(())
+                                    })
+                                })
+                                .collect::<Vec<_>>()
+                                .into_iter()
+                            {
+                                if let Err(e) = jh.await? {
+                                    error!(">> Storage: {}", e);
+                                }
+                            }
                         }
                     }
                 }
