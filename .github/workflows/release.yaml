@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install -y podman
       - name: build images
         run: |
-          podman build --target bot -t bot --network host bot
+          podman build --target bot -t bot:$(cargo pkgid -p telegram_sync_bot | sed -n "s/.*@//p") --network host bot
           podman save localhost/bot:latest | gzip > bot.tar.gz
           podman build --target server -t server --network host server
           podman save localhost/server:latest | gzip > server.tar.gz

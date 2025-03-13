@@ -116,7 +116,7 @@ telegram_sync_bot run -o /path/to/output -l http://127.0.0.1:8081 -c podman -i s
 Build `telegram_sync_bot` into container image:
 ```sh
 # build bot image
-podman build --target bot -t bot --network host bot
+podman build --target bot -t bot:$(cargo pkgid -p telegram_sync_bot | sed -n "s/.*@//p") --network host bot
 ```
 Or download and load from the release page (bot.tar.gz).
 
