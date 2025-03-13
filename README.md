@@ -128,7 +128,7 @@ podman run --pod sync_bot --name server -itd --env-file .env \
     -v cache:/app/data server
 podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
     -v /path/to/output:/app/output  \
-    --mount cache:/app/data bot \
+    --v cache:/app/data bot \
     run -o /app/output -l http://server:8081
 ```
 
@@ -189,7 +189,7 @@ WantedBy=multi-user.target
 # /etc/container/systemd/users/<UserID>/sync-bot.kube
 [Unit]
 Description=Telegram file sync bot
-After=network-online.target run-media-louis-Local\x20Disk.mount
+After=network-online.target
 
 [Kube]
 Yaml=/etc/containers/systemd/users/<UserID>/sync-bot.yaml
