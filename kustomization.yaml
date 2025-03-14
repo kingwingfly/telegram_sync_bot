@@ -1,0 +1,11 @@
+namespace: sync-bot
+
+secretGenerator:
+  - name: sync-bot-secret
+    env: .env
+
+resources:
+  - k8s/server.yaml
+  - k8s/bot.yaml
+  - k8s/pv.yaml
+  - k8s/pvc.yaml

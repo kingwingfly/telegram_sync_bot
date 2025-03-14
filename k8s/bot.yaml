@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sync-bot-bot
+spec:
+  selector:
+    matchLabels:
+      app: sync-bot-bot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sync-bot-bot
+    spec:
+      containers:
+        - name: bot
+          image: localhost/bot:0.4.0
+          imagePullPolicy: Never
+          args:
+            - run
+            - -l
+            - http://server:8081
+            - -f10
+            - -d-10
+          envFrom:
+            - secretRef:
+                name: sync-bot-secret
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "50Mi"
+            limits:
+              cpu: "100m"
+              memory: "100Mi"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app
+
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: sync-bot-pvc

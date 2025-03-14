@@ -14,15 +14,15 @@ RUN cargo build --release
 
 FROM docker.io/alpine:latest AS bot
 
+WORKDIR /app
+
 RUN apk update \
     && apk add --no-cache --purge bash
 
-WORKDIR /app
-
-COPY --from=bot_builder /work/target/release/telegram_sync_bot /app/
+COPY --from=bot_builder /work/target/release/telegram_sync_bot /
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT ["/app/telegram_sync_bot"]
+ENTRYPOINT ["/telegram_sync_bot"]
 
 CMD ["--help"]

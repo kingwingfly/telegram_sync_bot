@@ -31,3 +31,5 @@ RUN apk update \
 EXPOSE 8081
 
 ENTRYPOINT ["./start.sh"]
+
+CMD ["/app/data"]

@@ -1,7 +1,12 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+    echo "Usage: $0 <data dir>" >&2
+    exit 1
+fi
+
 # run telegram-bot-api in background
-/app/telegram-bot-api -d /app/data --local &
+/app/telegram-bot-api -d $1 --local &
 app_pid=$!
 
 # check if telegram-bot-api is running

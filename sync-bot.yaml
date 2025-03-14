@@ -14,13 +14,10 @@ metadata:
   name: sync-bot
 spec:
   volumes:
-    - name: cache
-      persistentVolumeClaim:
-        claimName: cache
-    - hostPath:
+    - name: output
+      hostPath:
         path: <OUTPUT_DIR> # Path to the output directory on the host
         type: Directory
-      name: output
 
   containers:
     - name: server
@@ -37,8 +34,6 @@ spec:
       image: bot
       args:
         - run
-        - -o
-        - /app/output
         - -l
         - http://server:8081
         - -f10
@@ -48,7 +43,5 @@ spec:
             name: config
             optional: false
       volumeMounts:
-        - mountPath: /app/output
+        - mountPath: /app
           name: output
-        - mountPath: /app/data
-          name: cache
