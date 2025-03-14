@@ -124,11 +124,12 @@ Or download and load from the release page (bot.tar.gz).
 Start server and bot in a pod:
 ```sh
 podman pod create sync_bot
-podman volume create cache
+
 podman run --pod sync_bot --name server -itd --env-file .env \
     -v /path/to/data:/app/data server
-podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
-    -v /path/to/data:/app/data  \
+podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT. \
+    -v /path/to/data:/app/data.  \
+    bot:0.X.0. \
     run -d /app/data -l http://server:8081
 ```
 
@@ -227,7 +228,7 @@ Note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --
 Use `fd` to delete database, channel message, and files in the data dir,
 
 ```sh
-fd ".*\.[jpg|mp4]" '/path/to/data' -X podman run --name bot -it --env-file .env -v /path/to/data:/app/data --replace bot:0.5.0 delete -d /app/data {/}
+fd ".*\.[jpg|mp4]" '/path/to/data' -X podman run --name bot -it --env-file .env -v /path/to/data:/app/data --replace bot:0.X.0 delete -d /app/data {/}
 ```
 
 # Development
