@@ -1,21 +1,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sync-bot-server
+  name: sync-bot
 spec:
   selector:
     matchLabels:
-      app: sync-bot-server
+      app: sync-bot
   replicas: 1
   template:
     metadata:
       labels:
-        app: sync-bot-server
+        app: sync-bot
     spec:
       containers:
         - name: server
           image: localhost/server:latest
           imagePullPolicy: Never
+          envFrom:
+            - secretRef:
+                name: sync-bot-secret
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "50Mi"
+            limits:
+              cpu: "100m"
+              memory: "100Mi"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+
+        - name: bot
+          image: localhost/bot:0.4.0
+          imagePullPolicy: Never
+          args:
+            - run
+            - -o
+            - /app/data
+            - -l
+            - http://127.0.0.1:8081
+            - -f10
+            - -d-10
           envFrom:
             - secretRef:
                 name: sync-bot-secret

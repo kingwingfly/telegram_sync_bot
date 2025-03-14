@@ -145,10 +145,13 @@ podman kube play sync-bot.yaml
 
 ### run with k8s
 
-Build and save the image into `.tar.gz` or download from the release page first.
+Build and save the image as `.tar.gz` or download from the release page first.
+
+Modify `.env` and `k8s/pv.yaml` and so on to fit your need.
 ```sh
-sudo ctr images import -n=k8s.io /tmp/server.tar.gz
-sudo ctr images import -n=k8s.io /tmp/bot.tar.gz
+# load local images
+sudo ctr -n=k8s.io images import /tmp/server.tar.gz
+sudo ctr -n=k8s.io images import /tmp/bot.tar.gz
 
 sudo crictl image
 # you should see localhost/bot and localhost/server available

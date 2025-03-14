@@ -14,7 +14,7 @@ metadata:
   name: sync-bot
 spec:
   volumes:
-    - name: output
+    - name: data
       hostPath:
         path: <OUTPUT_DIR> # Path to the output directory on the host
         type: Directory
@@ -28,12 +28,14 @@ spec:
             optional: false
       volumeMounts:
         - mountPath: /app/data
-          name: cache
+          name: data
 
     - name: bot
       image: bot
       args:
         - run
+        - -o
+        - /app/data
         - -l
         - http://server:8081
         - -f10
@@ -43,5 +45,5 @@ spec:
             name: config
             optional: false
       volumeMounts:
-        - mountPath: /app
-          name: output
+        - mountPath: /app/data
+          name: data

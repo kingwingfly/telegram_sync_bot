@@ -39,7 +39,7 @@ impl fmt::Display for Context {
             .field("bypass_users", &self.bypass_users)
             .field("fav", &format!("score >= {}", self.fav_score_limit))
             .field("delete", &format!("score < {}", self.delete_score_limit))
-            .field("output_dir", &self.output_dir)
+            .field("output_dir", &self.output_dir.canonicalize().ok())
             .finish()
     }
 }

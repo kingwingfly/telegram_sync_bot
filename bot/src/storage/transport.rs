@@ -14,7 +14,7 @@ use teloxide::net::Download as _;
 use teloxide::prelude::{Request as _, Requester as _};
 use tokio::fs;
 use tokio_util::sync::CancellationToken;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, Clone)]
 pub struct TransportHandle {
@@ -103,6 +103,7 @@ impl Downloader {
                                         }
                                         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                                     };
+                                    info!(">> DOWNLOADER: from {} to {}", server_path.display(), save_path.display());
                                     // download file
                                     match context.local_server {
                                         false => {
@@ -127,7 +128,7 @@ impl Downloader {
                                                 if context.hard_link.load(Ordering::Relaxed) {
                                                     if fs::hard_link(&server_path,  &save_path).await.is_err() {
                                                         context.hard_link.store(false, Ordering::Relaxed);
-                                                        info!(">> DOWNLOADER: file in local server cannot hard link to output, use copy instread");
+                                                        info!(">> DOWNLOADER: file in local server cannot hard link to output, use copy instead");
                                                         fs::copy(server_path, &save_path).await?;
                                                     }
                                                 } else {
@@ -145,7 +146,10 @@ impl Downloader {
                                         res = download(bot, file_id.clone(), file_name, context, handle.clone()) => {
                                             match res {
                                                 Ok(_) => handle.set_state(TransportState::Completed),
-                                                Err(_) => handle.set_state(TransportState::Failed),
+                                                Err(e) => {
+                                                    warn!(">> DOWNLOADER {}", e);
+                                                    handle.set_state(TransportState::Failed);
+                                                },
                                             }
                                             handle.cancel(); // when downloading, await cancel.cancelled() avoiding loop checking
                                         },

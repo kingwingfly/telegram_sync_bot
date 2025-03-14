@@ -19,10 +19,10 @@ WORKDIR /app
 RUN apk update \
     && apk add --no-cache --purge bash
 
-COPY --from=bot_builder /work/target/release/telegram_sync_bot /
+COPY --from=bot_builder /work/target/release/telegram_sync_bot /app
 
 STOPSIGNAL SIGINT
 
-ENTRYPOINT ["/telegram_sync_bot"]
+ENTRYPOINT ["/app/telegram_sync_bot"]
 
 CMD ["--help"]
