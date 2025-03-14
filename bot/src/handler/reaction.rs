@@ -147,7 +147,7 @@ async fn reaction_count_handle(
                     .try_multiple_times(3)
                     .await?;
                 info!(">> BOT: fav file-handle ({} {})", chat_id, msg_id);
-            } else if score < ctx.delete_score_limit {
+            } else if score < ctx.dislike_score_limit {
                 storage.cancel_task_by_handle(chat_id, msg_id).await?;
                 (|| bot.delete_message(chat_id, msg_id))
                     .try_multiple_times(3)

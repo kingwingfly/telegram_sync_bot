@@ -16,7 +16,7 @@ spec:
   volumes:
     - name: data
       hostPath:
-        path: <OUTPUT_DIR> # Path to the output directory on the host
+        path: <DATA_DIR> # Path to the data directory on the host
         type: Directory
 
   containers:
@@ -31,19 +31,18 @@ spec:
           name: data
 
     - name: bot
-      image: bot
+      image: bot:0.5.0
       args:
         - run
-        - -o
+        - -d
         - /app/data
         - -l
         - http://server:8081
         - -f10
-        - -d-10
+        - -F-10
       envFrom:
         - configMapRef:
             name: config
-            optional: false
       volumeMounts:
         - mountPath: /app/data
           name: data

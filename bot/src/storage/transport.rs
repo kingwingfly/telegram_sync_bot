@@ -96,14 +96,13 @@ impl Downloader {
                                 ) -> Result<()> {
                                     info!(">> DOWNLOADER: start task {}", file_id);
                                     handle.set_state(TransportState::Downloading);
-                                    let save_path = context.output_dir.join(file_name);
+                                    let save_path = context.data_dir.join(file_name);
                                     let server_path = loop {
                                         if let Ok(f) = bot.get_file(&file_id).send().await {
                                             break PathBuf::from(f.path);
                                         }
                                         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                                     };
-                                    info!(">> DOWNLOADER: from {} to {}", server_path.display(), save_path.display());
                                     // download file
                                     match context.local_server {
                                         false => {

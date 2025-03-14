@@ -21,10 +21,10 @@ pub struct ContextInner {
 
     // channel only: score >= fav_score_limit will be fav
     pub fav_score_limit: i32,
-    // channel only: score < delete_score_limit will be deleted
-    pub delete_score_limit: i32,
+    // channel only: score < dislike_score_limit will be deleted
+    pub dislike_score_limit: i32,
 
-    pub output_dir: PathBuf,
+    pub data_dir: PathBuf,
 
     pub hard_link: AtomicBool,
 }
@@ -38,8 +38,8 @@ impl fmt::Display for Context {
             .field("bypasskey", &self.bypasskey.read())
             .field("bypass_users", &self.bypass_users)
             .field("fav", &format!("score >= {}", self.fav_score_limit))
-            .field("delete", &format!("score < {}", self.delete_score_limit))
-            .field("output_dir", &self.output_dir.canonicalize().ok())
+            .field("delete", &format!("score < {}", self.dislike_score_limit))
+            .field("output_dir", &self.data_dir.canonicalize().ok())
             .finish()
     }
 }

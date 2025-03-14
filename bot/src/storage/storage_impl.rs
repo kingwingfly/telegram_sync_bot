@@ -60,7 +60,7 @@ impl MyStorage {
         tracing::Span::current().record("file_name", &file_name);
         tracing::Span::current().record("old_state", old_state.to_string());
 
-        let dir = self.context.output_dir.join(handle.0.to_string());
+        let dir = self.context.data_dir.join(handle.0.to_string());
         let new_dir = dir.join(state.to_string().to_lowercase());
         fs::create_dir_all(&new_dir).await?;
         let from = dir
@@ -79,7 +79,7 @@ impl MyStorage {
                     .await?;
             }
             Err(_) => {
-                let origin = self.context.output_dir.join(&file_name);
+                let origin = self.context.data_dir.join(&file_name);
                 let db = self.db.clone();
                 tokio::spawn(async move {
                     for _ in 0..32768 {

@@ -29,7 +29,7 @@ enum SubCmd {
     Run {
         /// The directory to store the files.
         #[arg(short, long, default_value = ".")]
-        output: PathBuf,
+        data: PathBuf,
         /// The url if you are using a local server.
         #[arg(short, long)]
         local_server_url: Option<String>,
@@ -42,17 +42,17 @@ enum SubCmd {
         /// If score >= limit, fav a file, limit >= 0 (channel only).
         #[arg(short, long, default_value = "10")]
         fav_score_limit: i32,
-        /// If score < limit, delete a file, limit <= 0 (channel only, e.g `-d-10`).
-        #[arg(short, long, default_value = "-10")]
-        delete_score_limit: i32,
+        /// If score < limit, dislike a file, limit <= 0 (channel only, e.g `-d-10`).
+        #[arg(short = 'F', long, default_value = "-10")]
+        dislike_score_limit: i32,
     },
-    /// Delete files by file_name in the output dir, and delete the record in the database,
+    /// Delete files by file_name in the data dir, and delete the record in the database,
     /// delete the message in the channel. The database should not be locked by other process,
     /// and there should not be any other bot instance.
     Delete {
         /// The directory to store the files.
         #[arg(short, long, default_value = ".")]
-        output: PathBuf,
+        data: PathBuf,
         /// The url if you are using a local server.
         #[arg(short, long)]
         local_server_url: Option<String>,
@@ -86,14 +86,14 @@ impl Cli {
         init()?;
         match args.subcmd {
             SubCmd::Run {
-                output,
+                data: output,
                 local_server_url,
                 container_manager,
                 container_id,
                 fav_score_limit,
-                delete_score_limit,
+                dislike_score_limit,
             } => {
-                if fav_score_limit < 0 || delete_score_limit > 0 {
+                if fav_score_limit < 0 || dislike_score_limit > 0 {
                     return Err(anyhow!("Invalid score limit"));
                 }
                 let context = Context {
@@ -139,12 +139,12 @@ impl Cli {
                                 }
                             }
                         },
-                        output_dir: {
+                        data_dir: {
                             std::fs::create_dir_all(&output)?;
                             output
                         },
                         fav_score_limit,
-                        delete_score_limit,
+                        dislike_score_limit,
                         hard_link: AtomicBool::new(true), // ensure try hard link once
                     }),
                 };
@@ -154,7 +154,7 @@ impl Cli {
                     bot = bot.set_api_url(url.parse().context("Failed to parse local server url")?);
                 }
                 let storage = MyStorage::new(
-                    format!("sqlite://{}/data.db?mode=rwc", context.output_dir.display()),
+                    format!("sqlite://{}/data.db?mode=rwc", context.data_dir.display()),
                     bot.clone(), // used to download files
                     context.clone(),
                 )
@@ -174,7 +174,7 @@ impl Cli {
                 Ok(())
             }
             SubCmd::Delete {
-                output,
+                data: output,
                 local_server_url,
                 file_names,
             } => {
@@ -185,12 +185,12 @@ impl Cli {
                         container_id: None,
                         bypasskey: RwLock::new(gen_key()),
                         bypass_users: None,
-                        output_dir: {
+                        data_dir: {
                             std::fs::create_dir_all(&output)?;
                             output
                         },
                         fav_score_limit: 0,
-                        delete_score_limit: 0,
+                        dislike_score_limit: 0,
                         hard_link: AtomicBool::new(true), // ensure try hard link once
                     }),
                 };
@@ -200,7 +200,7 @@ impl Cli {
                     bot = bot.set_api_url(url.parse().context("Failed to parse local server url")?);
                 }
                 let storage = MyStorage::new(
-                    format!("sqlite://{}/data.db?mode=rwc", context.output_dir.display()),
+                    format!("sqlite://{}/data.db?mode=rwc", context.data_dir.display()),
                     bot.clone(), // used to download files
                     context.clone(),
                 )
@@ -214,7 +214,7 @@ impl Cli {
                             bot.delete_message(chat_id, msg_id).send().await.ok();
                             info!(">> BOT: delete message {:?}", (chat_id, msg_id));
                             storage.delete_file_record(file_id).await.ok();
-                            for jh in WalkDir::new(&context.output_dir)
+                            for jh in WalkDir::new(&context.data_dir)
                                 .into_iter()
                                 .filter_map(|p| p.ok())
                                 .filter(|e| e.file_name().to_str() == Some(&file_name))

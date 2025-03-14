@@ -67,11 +67,11 @@ Usage: telegram_sync_bot <COMMAND>
 
 Commands:
   run     Run the bot
-  delete  Delete files by file_name in the output dir, and delete the record in the database, delete the message in the channel. The database should not be locked by other process, and there should not be any other bot instance.
+  delete  Delete files by file_name in the data dir, and delete the record in the database, delete the message in the channel. The database should not be locked by other process, and there should not be any other bot instance.
 ```
 
 ```sh
-telegram_sync_bot run -o /path/to/output
+telegram_sync_bot run -d /path/to/data
 ```
 
 ## No file size limit (local server)
@@ -109,7 +109,7 @@ We provide 4 ways here:
 ```sh
 podman run --name server -itd --env-file .env -p 8081:8081 server
 
-telegram_sync_bot run -o /path/to/output -l http://127.0.0.1:8081 -c podman -i server
+telegram_sync_bot run -d /path/to/output -l http://127.0.0.1:8081 -c podman -i server
 ```
 
 ### run as pod
@@ -126,11 +126,10 @@ Start server and bot in a pod:
 podman pod create sync_bot
 podman volume create cache
 podman run --pod sync_bot --name server -itd --env-file .env \
-    -v cache:/app/data server
+    -v /path/to/data:/app/data server
 podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT\
-    -v /path/to/output:/app/output  \
-    --v cache:/app/data bot \
-    run -o /app/output -l http://server:8081
+    -v /path/to/data:/app/data  \
+    run -d /app/data -l http://server:8081
 ```
 
 ### run with podman kube play
@@ -223,6 +222,14 @@ systemctl start --user sync-bot
 
 Note: you can use `/usr/lib/systemd/system-generators/podman-system-generator --user --dryrun` to check the generated service file.
 
+# Tips
+
+Use `fd` to delete database, channel message, and files in the data dir,
+
+```sh
+fd ".*\.[jpg|mp4]" '/path/to/data' -X podman run --name bot -it --env-file .env -v /path/to/data:/app/data --replace bot:0.5.0 delete -d /app/data {/}
+```
+
 # Development
 
 **Rust 2024 is essencial**
@@ -231,14 +238,14 @@ Set `DATABASE_URL` in `.env` to generate entity crate.
 
 ```
 # .env
-DATABASE_URL=sqlite://output/data.db
+DATABASE_URL=sqlite://data/data.db
 ```
 
 Then you can run the following command to create the database and generate the entity:
 
 ```sh
 cargo install sea-orm-cli
-mkdir output
+mkdir data
 sea-orm-cli migrate refresh
 sea-orm-cli generate entity --expanded-format -o bot/src/storage/entity/inner
 ```
