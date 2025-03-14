@@ -7,6 +7,7 @@ use crate::{
 use anyhow::{Context as _, Result, anyhow};
 use clap::{Parser, Subcommand};
 use parking_lot::RwLock;
+use std::sync::atomic::AtomicBool;
 use std::{collections::HashSet, path::PathBuf, process::Stdio, sync::Arc};
 use teloxide::{Bot, types::UserId};
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
@@ -144,6 +145,7 @@ impl Cli {
                         },
                         fav_score_limit,
                         delete_score_limit,
+                        hard_link: AtomicBool::new(true), // ensure try hard link once
                     }),
                 };
                 info!(">> INIT: {}", context);
@@ -189,6 +191,7 @@ impl Cli {
                         },
                         fav_score_limit: 0,
                         delete_score_limit: 0,
+                        hard_link: AtomicBool::new(true), // ensure try hard link once
                     }),
                 };
                 info!(">> INIT: {}", context);

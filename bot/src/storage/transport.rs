@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::{Sender, channel};
 use std::thread::JoinHandle;
 use teloxide::Bot;
@@ -123,7 +124,15 @@ impl Downloader {
                                                 .await?;
                                             }
                                             None => {
-                                                fs::copy(server_path, &save_path).await?;
+                                                if context.hard_link.load(Ordering::Relaxed) {
+                                                    if fs::hard_link(&server_path,  &save_path).await.is_err() {
+                                                        context.hard_link.store(false, Ordering::Relaxed);
+                                                        info!(">> DOWNLOADER: file in local server cannot hard link to output, use copy instread");
+                                                        fs::copy(server_path, &save_path).await?;
+                                                    }
+                                                } else {
+                                                    fs::copy(server_path, &save_path).await?;
+                                                }
                                             }
                                         },
                                     }

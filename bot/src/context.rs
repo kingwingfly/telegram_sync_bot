@@ -1,6 +1,7 @@
 use core::fmt;
 use parking_lot::RwLock;
 use std::ops::Deref;
+use std::sync::atomic::AtomicBool;
 use std::{collections::HashSet, path::PathBuf, sync::Arc};
 use teloxide::types::UserId;
 
@@ -24,6 +25,8 @@ pub struct ContextInner {
     pub delete_score_limit: i32,
 
     pub output_dir: PathBuf,
+
+    pub hard_link: AtomicBool,
 }
 
 impl fmt::Display for Context {
