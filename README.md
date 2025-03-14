@@ -98,10 +98,11 @@ podman build --target server -t server --network host server
 ```
 Or download and load from the release page (`server.tar.gz`), I've built one through GitHub Action for you.
 
-We provide three ways here:
+We provide 4 ways here:
 - native
 - pod
 - podman kube play
+- k8s
 
 ### normal way: server in container but bot native
 
@@ -140,6 +141,19 @@ You can download and load `server.tar.gz` and `bot.tar.gz` from the release page
 Or command below will automatically build the images for you which cost a lot of time.
 ```sh
 podman kube play sync-bot.yaml
+```
+
+### run with k8s
+
+Build and save the image into `.tar.gz` or download from the release page first.
+```sh
+sudo ctr images import -n=k8s.io /tmp/server.tar.gz
+sudo ctr images import -n=k8s.io /tmp/bot.tar.gz
+
+sudo crictl image
+# you should see localhost/bot and localhost/server available
+
+kubectl apply -k .
 ```
 
 # Systemd Service
