@@ -36,7 +36,7 @@ jobs:
         run: |
           version=$(cargo pkgid -p telegram_sync_bot | sed -n "s/.*@//p")
           podman build --target bot -t bot:$version --network host bot
-          podman save localhost/bot:latest:$version | gzip > bot.tar.gz
+          podman save localhost/bot:$version | gzip > bot.tar.gz
           podman build --target server -t server --network host server
           podman save localhost/server:latest | gzip > server.tar.gz
       - name: Release
