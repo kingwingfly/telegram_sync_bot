@@ -31,7 +31,7 @@ spec:
               mountPath: /app/data
 
         - name: bot
-          image: localhost/bot:0.5.0
+          image: localhost/bot:0.5.1
           imagePullPolicy: Never
           args:
             - run
