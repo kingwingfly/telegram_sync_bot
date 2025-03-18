@@ -31,7 +31,7 @@ spec:
           name: data
 
     - name: bot
-      image: bot:0.5.1
+      image: bot:0.5.2
       args:
         - run
         - -d

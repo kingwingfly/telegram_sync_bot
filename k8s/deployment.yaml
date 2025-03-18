@@ -7,6 +7,8 @@ spec:
     matchLabels:
       app: sync-bot
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -31,7 +33,7 @@ spec:
               mountPath: /app/data
 
         - name: bot
-          image: localhost/bot:0.5.1
+          image: localhost/bot:0.5.2
           imagePullPolicy: Never
           args:
             - run

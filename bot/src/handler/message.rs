@@ -55,15 +55,15 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
             }
             MediaKind::Video(video) => {
                 let file_id = video.video.file.id;
-                let file_name = format!(
+                let file_name = video.video.file_name.unwrap_or(format!(
                     "{}.{}",
-                    video.video.file_name.unwrap_or(file_id.clone()),
+                    file_id.clone(),
                     video
                         .video
                         .mime_type
                         .and_then(|m| m.suffix().map(|n| n.as_str().to_owned()))
                         .unwrap_or("mp4".to_string())
-                );
+                ));
                 if video.media_group_id.is_some() {
                     // break up the group
                     let old = msg_id;
@@ -79,18 +79,15 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
             }
             MediaKind::Audio(audio) => {
                 let file_id = audio.audio.file.id;
-                let file_name = format!(
+                let file_name = audio.audio.file_name.unwrap_or(format!(
                     "{}.{}",
-                    audio
-                        .audio
-                        .title
-                        .unwrap_or(audio.audio.file_name.unwrap_or(file_id.clone())),
+                    file_id.clone(),
                     audio
                         .audio
                         .mime_type
                         .and_then(|m| m.suffix().map(|n| n.as_str().to_owned()))
                         .unwrap_or("mp3".to_string())
-                );
+                ));
                 if audio.media_group_id.is_some() {
                     // break up the group
                     let old = msg_id;
@@ -105,13 +102,8 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
                 Some((file_id, file_name))
             }
             MediaKind::Photo(photo) => {
-                let file_id = photo
-                    .photo
-                    .into_iter()
-                    .max_by_key(|p| p.height)
-                    .unwrap()
-                    .file
-                    .id;
+                let file = photo.photo.into_iter().max_by_key(|p| p.height).unwrap();
+                let file_id = file.file.id;
                 let file_name = format!("{}.jpg", file_id);
                 if photo.media_group_id.is_some() {
                     // break up the group
