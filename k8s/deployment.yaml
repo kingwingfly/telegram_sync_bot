@@ -19,8 +19,6 @@ spec:
           envFrom:
             - secretRef:
                 name: sync-bot-secret
-          ports:
-            - containerPort: 8081
           resources:
             requests:
               cpu: "10m"

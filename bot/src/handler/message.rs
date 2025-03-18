@@ -55,11 +55,46 @@ async fn handle(bot: Bot, dialogue: MyDialogue, msg: Message, storage: MyStorage
             }
             MediaKind::Video(video) => {
                 let file_id = video.video.file.id;
-                let file_name = format!("{}.mp4", file_id);
+                let file_name = format!(
+                    "{}.{}",
+                    video.video.file_name.unwrap_or(file_id.clone()),
+                    video
+                        .video
+                        .mime_type
+                        .and_then(|m| m.suffix().map(|n| n.as_str().to_owned()))
+                        .unwrap_or("mp4".to_string())
+                );
                 if video.media_group_id.is_some() {
                     // break up the group
                     let old = msg_id;
                     msg_id = (|| bot.send_video(chat_id, InputFile::file_id(&file_id)))
+                        .try_multiple_times(3)
+                        .await?
+                        .id;
+                    (|| bot.delete_message(chat_id, old))
+                        .try_multiple_times(3)
+                        .await?;
+                }
+                Some((file_id, file_name))
+            }
+            MediaKind::Audio(audio) => {
+                let file_id = audio.audio.file.id;
+                let file_name = format!(
+                    "{}.{}",
+                    audio
+                        .audio
+                        .title
+                        .unwrap_or(audio.audio.file_name.unwrap_or(file_id.clone())),
+                    audio
+                        .audio
+                        .mime_type
+                        .and_then(|m| m.suffix().map(|n| n.as_str().to_owned()))
+                        .unwrap_or("mp3".to_string())
+                );
+                if audio.media_group_id.is_some() {
+                    // break up the group
+                    let old = msg_id;
+                    msg_id = (|| bot.send_audio(chat_id, InputFile::file_id(&file_id)))
                         .try_multiple_times(3)
                         .await?
                         .id;

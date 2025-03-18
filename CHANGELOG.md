@@ -9,6 +9,11 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.5.1] - 2025-03-14
+
+- support audio
+- better file_name extraction
+
 ## [0.5.0] - 2025-03-14
 
 - support kubernetes
