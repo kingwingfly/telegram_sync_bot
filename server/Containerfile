@@ -1,7 +1,5 @@
 FROM docker.io/alpine:latest AS server_builder
 
-COPY start.sh .
-
 RUN apk update \
     && apk add --no-cache --purge alpine-sdk linux-headers git zlib-dev openssl-dev gperf cmake ninja
 
