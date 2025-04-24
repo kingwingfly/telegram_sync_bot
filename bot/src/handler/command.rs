@@ -22,7 +22,7 @@ enum Command {
     Start,
     #[command(description = "Display this text.")]
     Help,
-    #[command(description = "Dhow the current state.")]
+    #[command(description = "Show the current state.")]
     State,
     #[command(description = "Switch among paused, active, partially-active state.")]
     Troggle,
