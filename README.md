@@ -31,7 +31,6 @@ People can react to the file with emoji, and the bot will count the score of the
 | --- | --- |
 |👍😁🙏😇🤗|+1|
 |❤🔥🥰🎉🍌💋💘😘|+2|
-|❤‍🔥|+3|
 |👎🤯😱😢🥴🌚😐🖕😨|-1|
 |🤬🤮💩🤡💔😡|-2|
 
