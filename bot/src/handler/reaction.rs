@@ -125,7 +125,6 @@ async fn reaction_count_handle(
                         "❤" | "🔥" | "🥰" | "🎉" | "🍌" | "💋" | "💘" | "😘" => {
                             Some(2 * *total_count as i32)
                         }
-                        "❤‍🔥" => Some(3 * *total_count as i32),
                         "👎" | "🤯" | "😱" | "😢" | "🥴" | "🌚" | "😐" | "🖕" | "😨" => {
                             Some(-(*total_count as i32))
                         }
