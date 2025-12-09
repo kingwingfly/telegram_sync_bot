@@ -126,9 +126,9 @@ podman pod create sync_bot
 
 podman run --pod sync_bot --name server -itd --env-file .env \
     -v /path/to/data:/app/data server
-podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT. \
-    -v /path/to/data:/app/data.  \
-    bot:0.X.0. \
+podman run --pod sync_bot --name bot -itd --env-file .env --stop-signal SIGINT \
+    -v /path/to/data:/app/data  \
+    bot:0.X.0 \
     run -d /app/data -l http://server:8081
 ```
 
