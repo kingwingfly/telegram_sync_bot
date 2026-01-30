@@ -33,8 +33,8 @@ impl MyStorage {
         self.db.get_chat_state(chat_id.0).await
     }
 
-    pub async fn troggle_chat_state(&self, chat_id: ChatId) -> Result<ChatState> {
-        self.db.troggle_chat_state(chat_id.0).await
+    pub async fn toggle_chat_state(&self, chat_id: ChatId) -> Result<ChatState> {
+        self.db.toggle_chat_state(chat_id.0).await
     }
 
     pub async fn get_file_state_by_handle(&self, handle: (ChatId, MessageId)) -> Result<FileState> {

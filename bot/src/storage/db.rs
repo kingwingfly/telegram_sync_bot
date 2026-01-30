@@ -47,14 +47,14 @@ impl Db {
         }
     }
 
-    pub(super) async fn troggle_chat_state(&self, chat_id: i64) -> Result<ChatState> {
+    pub(super) async fn toggle_chat_state(&self, chat_id: i64) -> Result<ChatState> {
         let txn = self.db.begin().await?;
         let current_state: ChatState =
             match chat_state::Entity::find_by_id(chat_id).one(&txn).await? {
                 Some(m) => m.state.into(),
                 None => ChatState::default(),
             };
-        let new_state = current_state.troggle();
+        let new_state = current_state.toggle();
         chat_state::Entity::insert(chat_state::ActiveModel {
             chat_id: Set(chat_id),
             state: Set(new_state.to_string()),

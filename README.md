@@ -14,7 +14,7 @@ The owner can then react to the messages with emoji to manage the file:
 
 ## file sent to bot managed channel
 
-Initially, the bot owner send `/troggle <bypasskey>` to the bot to troggle among states:
+Initially, the bot owner send `/toggle <bypasskey>` to the bot to toggle among states:
 - `paused`: pause the bot
 - `active`: sync files and answer reactions
 - `partially active`: answer reactions but not sync files

@@ -25,7 +25,7 @@ enum Command {
     #[command(description = "Show the current state.")]
     State,
     #[command(description = "Switch among paused, active, partially-active state.")]
-    Troggle,
+    Toggle,
     #[command(description = "Print current bypass key in the server side.")]
     BypassKey,
 }
@@ -50,7 +50,7 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
             }),
         )
         .branch(case![Command::BypassKey].endpoint(async |ctx: Context| {
-            info!(">> BOT: BypassKey: /troggle {}", ctx.bypasskey.read());
+            info!(">> BOT: BypassKey: /toggle {}", ctx.bypasskey.read());
             Ok(())
         }))
         .branch(
@@ -61,13 +61,13 @@ pub fn cmd_handler() -> UpdateHandler<anyhow::Error> {
                 Ok(())
             }),
         )
-        .branch(case![Command::Troggle].endpoint(
+        .branch(case![Command::Toggle].endpoint(
             async |bot: Bot, dialogue: MyDialogue, msg: Message, ctx: Context, db: MyStorage| {
                 if !auth(&bot, &dialogue, &msg, &ctx).await? {
                     info!(">> BOT: auth not pass");
                     return Ok(());
                 }
-                let state = db.troggle_chat_state(msg.chat.id).await?;
+                let state = db.toggle_chat_state(msg.chat.id).await?;
                 info!(">> BOT: curren state of {} {}", msg.chat.id, state);
                 bot.send_message(msg.chat.id, format!("Current State: {}", state))
                     .await?;

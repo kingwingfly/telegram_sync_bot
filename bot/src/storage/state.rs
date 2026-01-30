@@ -10,7 +10,7 @@ pub enum ChatState {
 }
 
 impl ChatState {
-    pub fn troggle(self) -> Self {
+    pub fn toggle(self) -> Self {
         match self {
             ChatState::Paused => ChatState::Active,
             ChatState::Active => ChatState::PartiallyActive,
