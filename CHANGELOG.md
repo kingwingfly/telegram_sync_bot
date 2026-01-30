@@ -9,6 +9,10 @@ Note: In this file, do not use the hard wrap in the middle of a sentence for com
 -->
 
 ## [Unreleased]
+## [0.5.3] - 2026-01-30
+
+- fix typo
+
 ## [0.5.2] - 2025-03-14
 
 - fix bug: duplicate extension in file_name
