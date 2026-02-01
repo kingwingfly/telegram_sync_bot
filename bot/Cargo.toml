@@ -11,36 +11,36 @@ keywords = ["telegram", "bot"]
 # env
 dotenv = { version = "0.15" }
 # cli
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.56", features = ["derive"] }
 # error
-anyhow = { version = "1.0.86" }
+anyhow = { version = "1.0.100" }
 # telegram
-teloxide = { version = "0.13", features = ["macros"] }
+teloxide = { version = "0.17", features = ["macros"] }
 # tracing
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # runtime
-tokio = { version = "1.8", features = [
+tokio = { version = "1.49", features = [
     "rt-multi-thread",
     "macros",
     "signal",
     "process",
 ] }
-tokio-util = { version = "0.7.13" }
+tokio-util = { version = "0.7.18" }
 # rand
-rand = { version = "0.9.0" }
+rand = { version = "0.9.2" }
 # db
-sea-orm = { version = "1.1.0", features = [
+sea-orm = { version = "1.1.10", features = [
     "sqlx-sqlite",
     "runtime-tokio",
     "macros",
 ] }
-sea-orm-migration = { version = "1.1.0", features = [
+sea-orm-migration = { version = "1.1.10", features = [
     "runtime-tokio",
     "sqlx-sqlite",
 ] }
 # sync
-parking_lot = { version = "0.12.3" }
+parking_lot = { version = "0.12.5" }
 # fs
 walkdir = { version = "2.5.0" }
 
